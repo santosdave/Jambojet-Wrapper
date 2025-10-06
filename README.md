@@ -230,7 +230,7 @@ try {
 
 ## Configuration Options
 
-The `config/jambojet.php` file provides these options:
+The `Config/jambojet.php` file provides these options:
 
 ```php
 return [

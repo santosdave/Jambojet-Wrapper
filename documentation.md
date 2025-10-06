@@ -856,7 +856,7 @@ public function register()
 ### Custom HTTP Client Configuration
 
 ```php
-// In config/jambojet.php
+// In Config/jambojet.php
 return [
     'base_url' => env('JAMBOJET_BASE_URL'),
     'subscription_key' => env('JAMBOJET_SUBSCRIPTION_KEY'),

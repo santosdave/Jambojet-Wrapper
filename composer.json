@@ -1,5 +1,6 @@
 {
   "name": "santosdave/jambojet-laravel",
+  "version": "1.0.1",
   "description": "Comprehensive Laravel package for JamboJet's NSK API integration",
   "type": "library",
   "keywords": [
@@ -8,7 +9,9 @@
     "jambojet",
     "NSK API",
     "api",
-    "travel"
+    "travel",
+    "booking",
+    "airline"
   ],
   "license": "MIT",
   "authors": [

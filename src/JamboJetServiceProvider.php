@@ -26,7 +26,7 @@ class JamboJetServiceProvider extends ServiceProvider
     public function boot()
     {
         $this->publishes([
-            __DIR__ . '/../config/jambojet.php' => config_path('jambojet.php'),
+            __DIR__ . '/../Config/jambojet.php' => config_path('jambojet.php'),
         ], 'jambojet-config');
 
         $this->validateConfiguration();
