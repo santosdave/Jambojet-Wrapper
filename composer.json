@@ -1,0 +1,57 @@
+{
+  "name": "santosdave/jambojet-laravel",
+  "description": "Comprehensive Laravel package for JamboJet's NSK API integration",
+  "type": "library",
+  "keywords": [
+    "santosdave",
+    "jambojet-wrapper",
+    "jambojet",
+    "NSK API",
+    "api",
+    "travel"
+  ],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "santosdave",
+      "email": "51959957+santosdave@users.noreply.github.com"
+    }
+  ],
+  "require": {
+    "php": "^8.1",
+    "illuminate/support": "^9.0|^10.0|^11.0",
+    "guzzlehttp/guzzle": "^7.0",
+    "illuminate/http": "^9.0|^10.0|^11.0",
+    "laravel/framework": "^10.0",
+    "monolog/monolog": "^3.8"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^9.0|^10.0",
+    "orchestra/testbench": "^7.0|^8.0|^9.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "SantosDave\\JamboJet\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "SantosDave\\JamboJet\\Tests\\": "tests/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "SantosDave\\JamboJet\\JamboJetServiceProvider"
+      ],
+      "aliases": {
+        "JamboJet": "SantosDave\\JamboJet\\Facades\\JamboJet"
+      }
+    }
+  },
+  "config": {
+    "sort-packages": true
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}
