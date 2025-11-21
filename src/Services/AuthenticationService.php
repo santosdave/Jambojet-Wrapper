@@ -11,21 +11,25 @@ use SantosDave\JamboJet\Exceptions\JamboJetAuthenticationException;
 use Illuminate\Support\Facades\Cache;
 use SantosDave\JamboJet\Events\TokenCreated;
 use SantosDave\JamboJet\Events\TokenRefreshed;
+use SantosDave\JamboJet\Exceptions\JamboJetValidationException;
+use SantosDave\JamboJet\Requests\MultiFactorRequest;
+use SantosDave\JamboJet\Requests\RoleUpdateRequest;
+use SantosDave\JamboJet\Requests\SingleSignOnCreateRequest;
 
 /**
  * Authentication Service for JamboJet NSK API
  * 
  * Handles all authentication and token management operations
- * Base endpoints: /api/nsk/v1/token and /api/v1/token
+ * Base endpoints: /api/auth/v1/token/user and /api/v1/token
  * 
  * Supported endpoints:
- * - GET /api/nsk/v1/token - Get current token information
- * - POST /api/nsk/v1/token - Create access token
- * - PUT /api/nsk/v1/token - Refresh/upgrade token or keep alive
- * - DELETE /api/nsk/v1/token - Abandon/logout token
- * - POST /api/nsk/v1/token/serverTransfer - Server transfer
- * - PUT /api/nsk/v1/token/singleSignOn - Single sign on upgrade
- * - POST /api/nsk/v1/token/singleSignOn - Create SSO token
+ * - GET /api/auth/v1/token/user - Get current token information
+ * - POST /api/auth/v1/token/user - Create access token
+ * - PUT /api/auth/v1/token/user - Refresh/upgrade token or keep alive
+ * - DELETE /api/auth/v1/token/user - Abandon/logout token
+ * - POST /api/auth/v1/token/user/serverTransfer - Server transfer
+ * - PUT /api/auth/v1/token/user/singleSignOn - Single sign on upgrade
+ * - POST /api/auth/v1/token/user/singleSignOn - Create SSO token
  * 
  * @package SantosDave\JamboJet\Services
  */
@@ -38,7 +42,7 @@ class AuthenticationService implements AuthenticationInterface
     /**
      * Create access token
      * 
-     * POST /api/nsk/v1/token
+     * POST /api/auth/v1/token/user
      * Creates the general access token that will grant access to the API
      * 
      * @param array $credentials Optional NSK token request data
@@ -47,19 +51,19 @@ class AuthenticationService implements AuthenticationInterface
      */
     public function createToken(array $credentials = []): array
     {
+
         try {
-            $response = $this->post('api/nsk/v1/token', $credentials);
-
+            $response = $this->post('api/auth/v1/token/user', $credentials);
             // Store token in cache and set for current session
-            if (isset($response['data']['token'])) {
-                $token = $response['data']['token'];
-                $this->cacheToken($token, $response['data']);
+            if (isset($response['data']['data']['token'])) {
+                $tokenData = $response['data']['data'];
+                $token = $tokenData['token'];
+                $this->cacheToken($token, $tokenData);
                 $this->setAccessToken($token);
+
+                // Fire event
+                event(new TokenCreated($token, Carbon::parse(time: $tokenData['expires']), $tokenData));
             }
-
-            // ADD: Fire event
-            event(new TokenCreated($token, Carbon::parse($response['data']['expires']), $response['data']));
-
             return $response;
         } catch (\Exception $e) {
             throw new JamboJetAuthenticationException(
@@ -104,7 +108,7 @@ class AuthenticationService implements AuthenticationInterface
     /**
      * Get current token information
      * 
-     * GET /api/nsk/v1/token
+     * GET /api/auth/v1/token/user
      * Get the information about the current token
      * 
      * @return array Current token session context
@@ -113,7 +117,7 @@ class AuthenticationService implements AuthenticationInterface
     public function getTokenInfo(): array
     {
         try {
-            return $this->get('api/nsk/v1/token');
+            return $this->get('api/auth/v1/token/user');
         } catch (\Exception $e) {
             throw new JamboJetAuthenticationException(
                 'Failed to get token information: ' . $e->getMessage(),
@@ -126,7 +130,7 @@ class AuthenticationService implements AuthenticationInterface
     /**
      * Refresh/upgrade current token or keep alive
      * 
-     * PUT /api/nsk/v1/token
+     * PUT /api/auth/v1/token/user
      * Given a non-null request, upgrades the current session's logged in user.
      * Otherwise, keeps the active token alive.
      * 
@@ -137,7 +141,7 @@ class AuthenticationService implements AuthenticationInterface
     public function refreshToken(array $credentials = []): array
     {
         try {
-            $response = $this->put('api/nsk/v1/token', $credentials);
+            $response = $this->put('api/auth/v1/token/user', $credentials);
 
             // Update cache if new token provided
             if (isset($response['data']['token'])) {
@@ -184,7 +188,7 @@ class AuthenticationService implements AuthenticationInterface
     /**
      * Abandon/logout current token
      * 
-     * DELETE /api/nsk/v1/token
+     * DELETE /api/auth/v1/token/user
      * Abandons the active token and logs out the user
      * 
      * @return array Logout response
@@ -193,7 +197,7 @@ class AuthenticationService implements AuthenticationInterface
     public function logout(): array
     {
         try {
-            $response = $this->delete('api/nsk/v1/token');
+            $response = $this->delete('api/auth/v1/token/user');
 
             // Clear cached token and current session token
             $this->clearTokenCache();
@@ -239,7 +243,7 @@ class AuthenticationService implements AuthenticationInterface
     /**
      * Server transfer
      * 
-     * POST /api/nsk/v1/token/serverTransfer
+     * POST /api/auth/v1/token/user/serverTransfer
      * Transfers session context to another server
      * 
      * @param array $transferRequest Server transfer request data
@@ -251,7 +255,7 @@ class AuthenticationService implements AuthenticationInterface
         $this->validateRequired($transferRequest, ['targetServer']);
 
         try {
-            $response = $this->post('api/nsk/v1/token/serverTransfer', $transferRequest);
+            $response = $this->post('api/auth/v1/token/user/serverTransfer', $transferRequest);
 
             // Update with new token from transfer
             if (isset($response['data']['token'])) {
@@ -273,7 +277,7 @@ class AuthenticationService implements AuthenticationInterface
     /**
      * Single Sign On - Upgrade current session
      * 
-     * PUT /api/nsk/v1/token/singleSignOn
+     * PUT /api/auth/v1/token/user/singleSignOn
      * Upgrades the current session's logged in user using SSO
      * 
      * @param array $ssoCredentials Single sign on credentials
@@ -285,7 +289,7 @@ class AuthenticationService implements AuthenticationInterface
         $this->validateRequired($ssoCredentials, ['providerKey', 'token']);
 
         try {
-            return $this->put('api/nsk/v1/token/singleSignOn', $ssoCredentials);
+            return $this->put('api/auth/v1/token/user/singleSignOn', $ssoCredentials);
         } catch (\Exception $e) {
             throw new JamboJetAuthenticationException(
                 'Failed to upgrade with SSO: ' . $e->getMessage(),
@@ -298,7 +302,7 @@ class AuthenticationService implements AuthenticationInterface
     /**
      * Single Sign On - Create token
      * 
-     * POST /api/nsk/v1/token/singleSignOn
+     * POST /api/auth/v1/token/user/singleSignOn
      * Creates access token using single sign on credentials
      * 
      * @param array $ssoCredentials Single sign on credentials
@@ -310,7 +314,7 @@ class AuthenticationService implements AuthenticationInterface
         $this->validateRequired($ssoCredentials, ['providerKey', 'token']);
 
         try {
-            $response = $this->post('api/nsk/v1/token/singleSignOn', $ssoCredentials);
+            $response = $this->post('api/auth/v1/token/user/singleSignOn', $ssoCredentials);
 
             if (isset($response['data']['token'])) {
                 $token = $response['data']['token'];
@@ -322,6 +326,176 @@ class AuthenticationService implements AuthenticationInterface
         } catch (\Exception $e) {
             throw new JamboJetAuthenticationException(
                 'Failed to create SSO token: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create anonymous token
+     * 
+     * POST /api/auth/v1/token/anonymous
+     * Creates a short-lived anonymous JWT token for unauthenticated access
+     * Tokens have a set expiration time
+     * 
+     * @param array $refreshData Optional refresh token data
+     * @return array Anonymous token response
+     * @throws JamboJetApiException
+     */
+    public function createAnonymousToken(array $refreshData = []): array
+    {
+        try {
+            $response = $this->post('api/auth/v1/token/anonymous', $refreshData);
+
+            if (isset($response['data']['token'])) {
+                $this->setAccessToken($response['data']['token']);
+                $this->cacheToken($response['data']['token'], $response['data']);
+            }
+
+            return $response;
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to create anonymous token: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+
+    /**
+     * Register multi-factor authentication
+     * 
+     * POST /api/auth/v1/token/multifactor
+     * Register multi-factor authentication options for first-time users
+     * Allows selection of MFA method and sends challenge code
+     * 
+     * @param MultiFactorRequest|array $request MFA request object or data array
+     * @return array MFA registration response
+     * @throws JamboJetApiException
+     */
+    public function registerMultiFactor(MultiFactorRequest|array $request): array
+    {
+        // Convert array to Request object if needed
+        if (is_array($request)) {
+            $request = new MultiFactorRequest(
+                credentials: $request['credentials'],
+                registration: $request['registration'] ?? null,
+                verify: $request['verify'] ?? null
+            );
+        }
+
+        $request->validate();
+
+        try {
+            return $this->post('api/auth/v1/token/multifactor', $request->toArray());
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to register multi-factor authentication: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Update token with new role permissions
+     * 
+     * PUT /api/auth/v1/token/role
+     * Updates the short-lived JWT with new role permissions (impersonation)
+     * 
+     * @param RoleUpdateRequest|array $request Role update request object or data array
+     * @return array Updated token response
+     * @throws JamboJetApiException
+     */
+    public function updateTokenRole(RoleUpdateRequest|array $request): array
+    {
+        // Convert array to Request object if needed
+        if (is_array($request)) {
+            $request = RoleUpdateRequest::fromArray($request);
+        }
+
+        $request->validate();
+
+        try {
+            $response = $this->put('api/auth/v1/token/role', $request->toArray());
+
+            if (isset($response['data']['token'])) {
+                $this->setAccessToken($response['data']['token']);
+                $this->cacheToken($response['data']['token'], $response['data']);
+            }
+
+            return $response;
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to update token role: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create single sign-on user with person data
+     * 
+     * POST /api/nsk/v1/token/user/person/singleSignOn
+     * Creates a new user, links it with an SSO provider, then logs in as the new user
+     * Warning: Currently only works with Facebook
+     * 
+     * @param SingleSignOnCreateRequest|array $request SSO create request object or data array
+     * @return array Token response with new user
+     * @throws JamboJetApiException
+     */
+    public function createSingleSignOnUser(SingleSignOnCreateRequest|array $request): array
+    {
+        // Convert array to Request object if needed
+        if (is_array($request)) {
+            $request = SingleSignOnCreateRequest::fromArray($request);
+        }
+
+        $request->validate();
+
+        try {
+            $response = $this->post('api/nsk/v1/token/user/person/singleSignOn', $request->toArray());
+
+            if (isset($response['data']['token'])) {
+                $this->setAccessToken($response['data']['token']);
+                $this->cacheToken($response['data']['token'], $response['data']);
+            }
+
+            return $response;
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to create SSO user: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create single sign-on token for person
+     * 
+     * POST /api/nsk/v1/token/user/person/singleSignOn
+     * Creates SSO token associated with a specific person
+     * Note: Different from standard SSO - this endpoint creates the SSO token itself
+     * 
+     * @param string $personKey Person identifier
+     * @param array $ssoData SSO token creation data
+     * @return array SSO token response
+     * @throws JamboJetApiException
+     */
+    public function createPersonSingleSignOnToken(string $personKey, array $ssoData): array
+    {
+        $this->validatePersonKey($personKey);
+        $this->validateSsoTokenCreationRequest($ssoData);
+
+        try {
+            return $this->post("api/nsk/v1/token/user/person/{$personKey}/singleSignOn", $ssoData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to create person SSO token: ' . $e->getMessage(),
                 $e->getCode(),
                 $e
             );
@@ -406,8 +580,6 @@ class AuthenticationService implements AuthenticationInterface
             'expires_at' => $expiresAt  // ADD THIS
         ], $expiresAt->diffInSeconds(now()));
 
-        $tokenManager = app(TokenManager::class);
-        $tokenManager->setToken($token, $expiresAt);
 
         // ADD: Store current token globally
         Cache::put('jambojet_current_token', $token, $expiresAt->diffInSeconds(now()));
@@ -436,7 +608,13 @@ class AuthenticationService implements AuthenticationInterface
      */
     public function isTokenExpiringSoon(int $thresholdSeconds = 120): bool
     {
-        return $this->tokenExpiresIn() < $thresholdSeconds;
+        $cached = $this->getCachedToken($this->accessToken);
+        if (!$cached || !isset($cached['expires_at'])) {
+            return true; // No token, needs refresh
+        }
+
+        $remaining = $cached['expires_at']->diffInSeconds(now());
+        return $remaining < $thresholdSeconds;
     }
 
     /**
@@ -463,6 +641,31 @@ class AuthenticationService implements AuthenticationInterface
 
         $cacheKey = $this->cachePrefix . md5($token);
         return Cache::get($cacheKey);
+    }
+
+    /**
+     * Auto-authenticate with platform credentials
+     */
+    public function autoAuthenticate(): array
+    {
+        return $this->createToken([
+            'credentials' => [
+                'userName' => config('jambojet.auth.username'),
+                'password' => config('jambojet.auth.password'),
+                'domain' => config('jambojet.auth.domain'),
+                'channelType' => 'Api'
+            ]
+        ]);
+    }
+
+    /**
+     * Ensure valid token exists
+     */
+    public function ensureAuthenticated(): void
+    {
+        if (!$this->accessToken || $this->isTokenExpiringSoon()) {
+            $this->autoAuthenticate();
+        }
     }
 
     /**
@@ -497,6 +700,111 @@ class AuthenticationService implements AuthenticationInterface
 
         return false;
     }
+
+    /**
+     * Validate multi-factor authentication request
+     * 
+     * @param array $data MFA data
+     * @throws JamboJetValidationException
+     */
+    private function validateMultiFactorRequest(array $data): void
+    {
+        // Validate required credentials
+        $this->validateRequired($data, ['credentials']);
+
+        $credentials = $data['credentials'];
+        $this->validateRequired($credentials, ['domain', 'username', 'password']);
+
+        // Must have either registration or verify
+        if (!isset($data['registration']) && !isset($data['verify'])) {
+            throw new JamboJetValidationException(
+                'Either registration or verify data must be provided for MFA',
+                400
+            );
+        }
+
+        // Validate registration data if provided
+        if (isset($data['registration'])) {
+            $this->validateRequired($data['registration'], ['type']);
+
+            $type = $data['registration']['type'];
+
+            // Type 0 = Email, Type 1 = SMS, Type 2 = TOTP
+            if (!in_array($type, [0, 1, 2])) {
+                throw new JamboJetValidationException(
+                    'Invalid MFA type. Must be 0 (Email), 1 (SMS), or 2 (TOTP)',
+                    400
+                );
+            }
+
+            // Validate email for type 0
+            if ($type === 0) {
+                $this->validateRequired($data['registration'], ['email']);
+                $this->validateFormats($data['registration'], ['email' => 'email']);
+            }
+
+            // Validate phone for type 1
+            if ($type === 1) {
+                $this->validateRequired($data['registration'], ['phone']);
+            }
+        }
+
+        // Validate verify data if provided
+        if (isset($data['verify'])) {
+            $this->validateRequired($data['verify'], ['challengeCode', 'challengeId']);
+        }
+    }
+
+    /**
+     * Validate role update request
+     * 
+     * @param array $data Role data
+     * @throws JamboJetValidationException
+     */
+    private function validateRoleUpdateRequest(array $data): void
+    {
+        // Based on JwtImpersonateRequest schema
+        $this->validateRequired($data, ['roleCode']);
+
+        $this->validateStringLengths($data, [
+            'roleCode' => ['max' => 10],
+            'cultureCode' => ['max' => 10],
+            'currencyCode' => ['max' => 3]
+        ]);
+    }
+
+    /**
+     * Validate person key format
+     * 
+     * @param string $personKey Person key
+     * @throws JamboJetValidationException
+     */
+    private function validatePersonKey(string $personKey): void
+    {
+        if (empty(trim($personKey))) {
+            throw new JamboJetValidationException(
+                'Person key cannot be empty',
+                400
+            );
+        }
+    }
+
+    /**
+     * Validate SSO token creation request
+     * 
+     * @param array $data SSO creation data
+     * @throws JamboJetValidationException
+     */
+    private function validateSsoTokenCreationRequest(array $data): void
+    {
+        // Add validation based on the specific schema requirements
+        // This endpoint creates the SSO token itself, not using it for auth
+        if (isset($data['expirationDate'])) {
+            $this->validateFormats($data, ['expirationDate' => 'datetime']);
+        }
+    }
+
+
 
     /**
      * Get all available authentication methods

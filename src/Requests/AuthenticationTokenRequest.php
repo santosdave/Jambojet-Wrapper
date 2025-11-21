@@ -6,7 +6,7 @@ namespace SantosDave\JamboJet\Requests;
  * Authentication Token Request
  * 
  * Handles authentication token creation requests for NSK API v1
- * Endpoint: POST /api/nsk/v1/token
+ * Endpoint: POST /api/auth/v1/token/user
  * 
  * @package SantosDave\JamboJet\Requests
  */

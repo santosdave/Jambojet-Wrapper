@@ -8,7 +8,7 @@ interface AccountInterface
      * Change account password
      * POST /api/nsk/v#/account/password/change
      */
-    public function changePassword(array $passwordData): array;
+    public function changePassword(array $credentials, string $newPassword): array;
 
     /**
      * Reset account password

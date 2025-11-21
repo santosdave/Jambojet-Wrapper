@@ -40,6 +40,26 @@ trait ValidatesRequests
         }
     }
 
+
+    protected function validateAvailabilityWithSsrRequest(array $searchRequest) {}
+
+    /**
+     * Validate API version
+     * 
+     * @param int $version Version to validate
+     * @param array $allowedVersions Allowed version numbers
+     * @throws JamboJetValidationException
+     */
+    protected function validateApiVersion(int $version, array $allowedVersions): void
+    {
+        if (!in_array($version, $allowedVersions)) {
+            throw new JamboJetValidationException(
+                "Invalid API version: {$version}. Allowed versions: " . implode(', ', $allowedVersions),
+                400
+            );
+        }
+    }
+
     /**
      * Legacy method for backward compatibility
      * 

@@ -725,9 +725,6 @@ $kenya = JamboJet::resources()->getCountry('KE');
 echo "Country: {$kenya['data']['name']}\n";
 echo "Currency: {$kenya['data']['defaultCurrencyCode']}\n";
 
-// Get all currencies
-$currencies = JamboJet::resources()->getCurrencies();
-
 // Get specific currency
 $kes = JamboJet::resources()->getCurrency('KES');
 echo "Currency: {$kes['data']['name']}\n";

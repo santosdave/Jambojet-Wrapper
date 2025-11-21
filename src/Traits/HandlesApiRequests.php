@@ -35,10 +35,15 @@ trait HandlesApiRequests
 
     /**
      * Make HTTP POST request to JamboJet API
+     * 
+     * @param string $endpoint API endpoint
+     * @param array $data Request body data
+     * @param array $headers Custom headers
+     * @param array $queryParams Query string parameters (NEW)
      */
-    protected function post(string $endpoint, array $data = [], array $headers = []): array
+    protected function post(string $endpoint, array $data = [], array $headers = [], array $queryParams = []): array
     {
-        return $this->makeRequest('POST', $endpoint, $data, $headers);
+        return $this->makeRequest('POST', $endpoint, $data, $headers, $queryParams);
     }
 
     /**
@@ -67,14 +72,20 @@ trait HandlesApiRequests
 
     /**
      * Core method to handle API requests with retries, logging, and error handling
+     * 
+     * @param string $method HTTP method
+     * @param string $endpoint API endpoint
+     * @param array $data Request data
+     * @param array $headers Custom headers
+     * @param array $queryParams Query string parameters (NEW)
      */
-    protected function makeRequest(string $method, string $endpoint, array $data = [], array $headers = []): array
+    protected function makeRequest(string $method, string $endpoint, array $data = [], array $headers = [], array $queryParams = []): array
     {
         if (!str_contains($endpoint, 'token')) {
             $this->ensureValidToken();
         }
 
-        $url = $this->buildUrl($endpoint);
+        $url = $this->buildUrl($endpoint, $queryParams);
         $headers = $this->buildHeaders($headers);
 
         // Check cache for GET requests
@@ -109,19 +120,19 @@ trait HandlesApiRequests
             } catch (JamboJetAuthenticationException $e) {
                 // ADD: Automatic 401 recovery
                 if ($e->getCode() === 401 && $attempt === 0 && !str_contains($endpoint, 'token')) {
-                    Log::info('JamboJet: Token expired (401), attempting automatic refresh', [
+                    Log::info('JamboJet: Token expired (401), attempting re-authentication', [
                         'endpoint' => $endpoint,
                         'attempt' => $attempt + 1
                     ]);
 
                     try {
-                        // Refresh token
+                        // Re-authenticate with platform credentials
                         $authService = app(AuthenticationInterface::class);
-                        $tokenResponse = $authService->refreshToken();
+                        $authService->autoAuthenticate();
 
                         // Update headers with new token
-                        if (isset($tokenResponse['data']['token'])) {
-                            $this->setAccessToken($tokenResponse['data']['token']);
+                        if ($this->accessToken) {
+                            $this->setAccessToken($this->accessToken);
                             $headers = $this->buildHeaders([]);
 
                             // Retry the request
@@ -129,7 +140,7 @@ trait HandlesApiRequests
                             continue;
                         }
                     } catch (\Exception $refreshError) {
-                        Log::error('JamboJet: Token refresh failed', [
+                        Log::error('JamboJet: Re-authentication failed', [
                             'error' => $refreshError->getMessage()
                         ]);
                         throw $e; // Re-throw original exception
@@ -187,55 +198,60 @@ trait HandlesApiRequests
         }
     }
 
-    // ADD: New method to ensure valid token before requests
     protected function ensureValidToken(): void
     {
-        // Skip for auth endpoints
-        if ($this->accessToken && method_exists($this, 'isTokenExpiringSoon')) {
-            try {
-                // Check if token expires in less than 2 minutes
-                if ($this->isTokenExpiringSoon(120)) {
-                    Log::info('JamboJet: Token expiring soon, refreshing proactively');
+        try {
+            // Get auth service
+            $authService = app(AuthenticationInterface::class);
 
-                    $authService = app(AuthenticationInterface::class);
-                    $tokenResponse = $authService->refreshToken();
+            // Check if token is expiring soon or doesn't exist
+            if (!$this->accessToken || $authService->isTokenExpiringSoon(120)) {
+                Log::info('JamboJet: Token missing or expiring soon, authenticating');
+                $authService->autoAuthenticate();
 
-                    if (isset($tokenResponse['data']['token'])) {
-                        $this->setAccessToken($tokenResponse['data']['token']);
-                    }
+                // Get the token from auth service
+                if ($this->accessToken) {
+                    $this->setAccessToken($this->accessToken);
                 }
-            } catch (\Exception $e) {
-                Log::warning('JamboJet: Proactive token refresh failed', [
-                    'error' => $e->getMessage()
-                ]);
-                // Continue with existing token
             }
+        } catch (\Exception $e) {
+            Log::warning('JamboJet: Auto-authentication failed', [
+                'error' => $e->getMessage()
+            ]);
+            // Continue - will fail with 401 if truly needed, then auto-recover
         }
     }
 
-    // ADD: Load cached token if available
+
     protected function loadCachedTokenIfAvailable(): void
     {
-        $tokenManager = app(TokenManager::class);
+        $token = Cache::get('jambojet_current_token');
+        $expiresAt = Cache::get('jambojet_current_token_expires');
 
-        if ($tokenManager->hasValidToken()) {
-            $this->accessToken = $tokenManager->getToken();
-
+        if ($token && $expiresAt && $expiresAt->isFuture()) {
+            $this->accessToken = $token;
             Log::debug('JamboJet: Auto-loaded cached token', [
-                'expires_in' => $tokenManager->getRemainingSeconds()
+                'expires_at' => $expiresAt->toDateTimeString()
             ]);
         }
     }
 
     /**
-     * Build full URL for API endpoint
+     * Build full URL with query parameters
+     * 
+     * @param string $endpoint API endpoint
+     * @param array $queryParams Query string parameters (NEW)
      */
-    protected function buildUrl(string $endpoint): string
+    protected function buildUrl(string $endpoint, array $queryParams = []): string
     {
         $baseUrl = rtrim($this->config['base_url'], '/');
-        $endpoint = ltrim($endpoint, '/');
+        $url = "{$baseUrl}/{$endpoint}";
 
-        return "{$baseUrl}/{$endpoint}";
+        if (!empty($queryParams)) {
+            $url .= '?' . http_build_query($queryParams);
+        }
+
+        return $url;
     }
 
     /**

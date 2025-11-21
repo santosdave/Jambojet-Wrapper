@@ -4,7 +4,49 @@ namespace SantosDave\JamboJet;
 
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
+use SantosDave\JamboJet\Contracts\AccountInterface;
+use SantosDave\JamboJet\Contracts\AddOnsInterface;
+use SantosDave\JamboJet\Contracts\AuthenticationInterface;
+use SantosDave\JamboJet\Contracts\AvailabilityInterface;
+use SantosDave\JamboJet\Contracts\BoardingPassInterface;
+use SantosDave\JamboJet\Contracts\BookingInterface;
+use SantosDave\JamboJet\Contracts\BundleInterface;
+use SantosDave\JamboJet\Contracts\CoreInterface;
+use SantosDave\JamboJet\Contracts\LoyaltyProgramInterface;
+use SantosDave\JamboJet\Contracts\ManifestInterface;
+use SantosDave\JamboJet\Contracts\MessageInterface;
+use SantosDave\JamboJet\Contracts\NavigationInterface;
+use SantosDave\JamboJet\Contracts\OrganizationInterface;
+use SantosDave\JamboJet\Contracts\PaymentInterface;
+use SantosDave\JamboJet\Contracts\ResourcesInterface;
+use SantosDave\JamboJet\Contracts\SeatInterface;
+use SantosDave\JamboJet\Contracts\SettingsInterface;
+use SantosDave\JamboJet\Contracts\TokenManagerInterface;
+use SantosDave\JamboJet\Contracts\TripInterface;
+use SantosDave\JamboJet\Contracts\UserInterface;
+use SantosDave\JamboJet\Contracts\VoucherInterface;
+use SantosDave\JamboJet\Services\AccountService;
+use SantosDave\JamboJet\Services\AddOnsService;
+use SantosDave\JamboJet\Services\AuthenticationService;
+use SantosDave\JamboJet\Services\AvailabilityService;
+use SantosDave\JamboJet\Services\BoardingPassService;
+use SantosDave\JamboJet\Services\BookingService;
+use SantosDave\JamboJet\Services\BundleService;
+use SantosDave\JamboJet\Services\CoreService;
 use SantosDave\JamboJet\Services\JamboJetClient;
+use SantosDave\JamboJet\Services\LoyaltyProgramService;
+use SantosDave\JamboJet\Services\ManifestService;
+use SantosDave\JamboJet\Services\MessageService;
+use SantosDave\JamboJet\Services\NavigationService;
+use SantosDave\JamboJet\Services\OrganizationService;
+use SantosDave\JamboJet\Services\PaymentService;
+use SantosDave\JamboJet\Services\ResourcesService;
+use SantosDave\JamboJet\Services\SeatService;
+use SantosDave\JamboJet\Services\SettingsService;
+use SantosDave\JamboJet\Services\TokenManager;
+use SantosDave\JamboJet\Services\TripService;
+use SantosDave\JamboJet\Services\UserService;
+use SantosDave\JamboJet\Services\VoucherService;
 
 class JamboJetServiceProvider extends ServiceProvider
 {
@@ -36,92 +78,127 @@ class JamboJetServiceProvider extends ServiceProvider
     {
         // Authentication & Token Service
         $this->app->bind(
-            \SantosDave\JamboJet\Contracts\AuthenticationInterface::class,
-            \SantosDave\JamboJet\Services\AuthenticationService::class
+            AuthenticationInterface::class,
+            AuthenticationService::class
         );
 
         // Availability & Search Service  
         $this->app->bind(
-            \SantosDave\JamboJet\Contracts\AvailabilityInterface::class,
-            \SantosDave\JamboJet\Services\AvailabilityService::class
+            AvailabilityInterface::class,
+            AvailabilityService::class
         );
 
         // Booking Service
         $this->app->bind(
-            \SantosDave\JamboJet\Contracts\BookingInterface::class,
-            \SantosDave\JamboJet\Services\BookingService::class
+            BookingInterface::class,
+            BookingService::class
         );
 
         // Payment Service
         $this->app->bind(
-            \SantosDave\JamboJet\Contracts\PaymentInterface::class,
-            \SantosDave\JamboJet\Services\PaymentService::class
+            PaymentInterface::class,
+            PaymentService::class
         );
 
         // User Management Service
         $this->app->bind(
-            \SantosDave\JamboJet\Contracts\UserInterface::class,
-            \SantosDave\JamboJet\Services\UserService::class
+            UserInterface::class,
+            UserService::class
         );
 
         // Account Service
         $this->app->bind(
-            \SantosDave\JamboJet\Contracts\AccountInterface::class,
-            \SantosDave\JamboJet\Services\AccountService::class
+            AccountInterface::class,
+            AccountService::class
         );
 
         // Add-ons Service
         $this->app->bind(
-            \SantosDave\JamboJet\Contracts\AddOnsInterface::class,
-            \SantosDave\JamboJet\Services\AddOnsService::class
+            AddOnsInterface::class,
+            AddOnsService::class
         );
 
         // Resources Service
         $this->app->bind(
-            \SantosDave\JamboJet\Contracts\ResourcesInterface::class,
-            \SantosDave\JamboJet\Services\ResourcesService::class
+            ResourcesInterface::class,
+            ResourcesService::class
         );
 
         // Organization Management Service
         $this->app->bind(
-            \SantosDave\JamboJet\Contracts\OrganizationInterface::class,
-            \SantosDave\JamboJet\Services\OrganizationService::class
+            OrganizationInterface::class,
+            OrganizationService::class
         );
 
         // Loyalty Program Service
         $this->app->bind(
-            \SantosDave\JamboJet\Contracts\LoyaltyProgramInterface::class,
-            \SantosDave\JamboJet\Services\LoyaltyProgramService::class
+            LoyaltyProgramInterface::class,
+            LoyaltyProgramService::class
         );
 
         // Navigation & Workflow Service
         $this->app->bind(
-            \SantosDave\JamboJet\Contracts\NavigationInterface::class,
-            \SantosDave\JamboJet\Services\NavigationService::class
+            NavigationInterface::class,
+            NavigationService::class
         );
 
         // Seat Management Service
         $this->app->bind(
-            \SantosDave\JamboJet\Contracts\SeatInterface::class,
-            \SantosDave\JamboJet\Services\SeatService::class
+            SeatInterface::class,
+            SeatService::class
         );
 
         // Bundle & Package Service
         $this->app->bind(
-            \SantosDave\JamboJet\Contracts\BundleInterface::class,
-            \SantosDave\JamboJet\Services\BundleService::class
+            BundleInterface::class,
+            BundleService::class
         );
 
         // Boarding Pass Service
         $this->app->bind(
-            \SantosDave\JamboJet\Contracts\BoardingPassInterface::class,
-            \SantosDave\JamboJet\Services\BoardingPassService::class
+            BoardingPassInterface::class,
+            BoardingPassService::class
         );
 
         // Token Manager Service
         $this->app->bind(
-            \SantosDave\JamboJet\Contracts\TokenManagerInterface::class,
-            \SantosDave\JamboJet\Services\TokenManager::class
+            TokenManagerInterface::class,
+            TokenManager::class
+        );
+        // Core System Operations Service
+        $this->app->bind(
+            CoreInterface::class,
+            CoreService::class
+        );
+
+        // Message Service
+        $this->app->bind(
+            MessageInterface::class,
+            MessageService::class
+        );
+
+        //Trip Service
+        $this->app->bind(
+            TripInterface::class,
+            TripService::class
+        );
+
+        //Manifest Service
+        $this->app->bind(
+            ManifestInterface::class,
+            ManifestService::class
+        );
+
+        // Voucher Service
+        $this->app->bind(
+            VoucherInterface::class,
+            VoucherService::class
+        );
+
+        // Settings Service
+        $this->app->bind(
+            SettingsInterface::class,
+            SettingsService::class
         );
     }
 
@@ -134,20 +211,26 @@ class JamboJetServiceProvider extends ServiceProvider
     {
         return [
             'jambojet',
-            \SantosDave\JamboJet\Contracts\AuthenticationInterface::class,
-            \SantosDave\JamboJet\Contracts\AvailabilityInterface::class,
-            \SantosDave\JamboJet\Contracts\BookingInterface::class,
-            \SantosDave\JamboJet\Contracts\PaymentInterface::class,
-            \SantosDave\JamboJet\Contracts\UserInterface::class,
-            \SantosDave\JamboJet\Contracts\AccountInterface::class,
-            \SantosDave\JamboJet\Contracts\AddOnsInterface::class,
-            \SantosDave\JamboJet\Contracts\ResourcesInterface::class,
-            \SantosDave\JamboJet\Contracts\OrganizationInterface::class,
-            \SantosDave\JamboJet\Contracts\LoyaltyProgramInterface::class,
-            \SantosDave\JamboJet\Contracts\NavigationInterface::class,
-            \SantosDave\JamboJet\Contracts\SeatInterface::class,
-            \SantosDave\JamboJet\Contracts\BundleInterface::class,
-            \SantosDave\JamboJet\Contracts\BoardingPassInterface::class,
+            AuthenticationInterface::class,
+            AvailabilityInterface::class,
+            BookingInterface::class,
+            PaymentInterface::class,
+            UserInterface::class,
+            AccountInterface::class,
+            AddOnsInterface::class,
+            ResourcesInterface::class,
+            OrganizationInterface::class,
+            LoyaltyProgramInterface::class,
+            NavigationInterface::class,
+            SeatInterface::class,
+            BundleInterface::class,
+            BoardingPassInterface::class,
+            TokenManagerInterface::class,
+            CoreInterface::class,
+            MessageInterface::class,
+            TripInterface::class,
+            ManifestInterface::class,
+            VoucherInterface::class,
         ];
     }
 

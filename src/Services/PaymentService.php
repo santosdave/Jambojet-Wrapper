@@ -37,6 +37,92 @@ class PaymentService implements PaymentInterface
     use HandlesApiRequests, ValidatesRequests;
 
     /**
+     * Use a stored payment method.
+     *
+     * @param string $storedPaymentKey
+     * @param array $paymentData
+     * @return array
+     */
+    public function useStoredPayment(string $storedPaymentKey, array $paymentData): array
+    {
+        return $this->processStoredPayment($storedPaymentKey, $paymentData);
+    }
+
+    /**
+     * Get all stored payments for the current user/session.
+     *
+     * @return array
+     */
+    public function getStoredPayments(): array
+    {
+        try {
+            return $this->get('api/nsk/v6/booking/payments/storedPayments');
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get stored payments: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create a customer credit refund.
+     *
+     * @param array $refundData
+     * @return array
+     */
+    public function createCustomerCreditRefund(array $refundData): array
+    {
+        return $this->processCustomerCreditRefund($refundData);
+    }
+
+    /**
+     * Create an organization credit refund.
+     *
+     * @param array $refundData
+     * @return array
+     */
+    public function createOrganizationCreditRefund(array $refundData): array
+    {
+        return $this->processOrganizationCreditRefund($refundData);
+    }
+
+    /**
+     * Get available payment method types.
+     *
+     * @return array
+     */
+    public function getPaymentMethodTypes(): array
+    {
+        // Example: return a static list or fetch from API if available
+        return [
+            'ExternalAccount',
+            'CustomerAccount',
+            'AgencyAccount',
+            'Voucher',
+            'Loyalty',
+            'Cash',
+            'PrePaid',
+            'MobileMoney'
+        ];
+    }
+
+    /**
+     * Verify a payment.
+     *
+     * @param array $paymentData
+     * @return array
+     */
+    public function verifyPayment(array $paymentData): array
+    {
+        if (empty($paymentData['paymentKey'])) {
+            throw new JamboJetValidationException('paymentKey is required for verification');
+        }
+        return $this->verifyStatus($paymentData['paymentKey']);
+    }
+
+    /**
      * Process payment for booking in state
      * 
      * POST /api/nsk/v6/booking/payments

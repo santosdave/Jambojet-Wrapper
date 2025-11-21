@@ -131,7 +131,7 @@ class UserService implements UserInterface
         $this->validateUserCreateRequest($userData);
 
         try {
-            return $this->post('api/nsk/v2/user', $userData);
+            return $this->post('api/nsk/v1/user', $userData);
         } catch (\Exception $e) {
             throw new JamboJetApiException(
                 'Failed to create user: ' . $e->getMessage(),

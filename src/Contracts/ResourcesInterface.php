@@ -16,17 +16,6 @@ interface ResourcesInterface
      */
     public function getCountries(array $criteria = []): array;
 
-    /**
-     * Get currencies
-     * GET /api/nsk/v#/resources/currencies
-     */
-    public function getCurrencies(array $criteria = []): array;
-
-    /**
-     * Get equipment types
-     * GET /api/nsk/v#/resources/equipmentTypes
-     */
-    public function getEquipmentTypes(array $criteria = []): array;
 
     /**
      * Get fare types

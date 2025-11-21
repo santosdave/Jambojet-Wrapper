@@ -15,12 +15,13 @@ use SantosDave\JamboJet\Exceptions\JamboJetValidationException;
  * Base endpoints: /api/nsk/v{version}/availability
  * 
  * Supported endpoints:
- * - POST /api/nsk/v4/availability/search - Latest full availability search
- * - POST /api/nsk/v3/availability/search/simple - Latest simple availability search
- * - POST /api/nsk/v2/availability/lowfare - Low fare availability search
- * - POST /api/nsk/v2/availability/lowfare/simple - Simple low fare search
+ * - POST /api/nsk/v4/availability/search - Full availability search (LATEST)
+ * - POST /api/nsk/v4/availability/search/simple - Simple search v4 (NEW)
+ * - POST /api/nsk/v3/availability/search/simple - Simple search v3
+ * - POST /api/nsk/v3/availability/lowfare - Low fare search (FIXED)
+ * - POST /api/nsk/v3/availability/lowfare/simple - Simple low fare (FIXED)
+ * - POST /api/nsk/v2/availability/search/ssr - Availability with SSR (NEW)
  * - GET /api/nsk/v1/fareRules/{fareAvailabilityKey} - Get fare rules
- * - GET /api/nsk/v1/booking/fareRules/* - Booking fare rules
  * 
  * @package SantosDave\JamboJet\Services
  */
@@ -54,21 +55,24 @@ class AvailabilityService implements AvailabilityInterface
     }
 
     /**
-     * Simple flight availability search
+     * Simple flight availability search (FIXED - Now supports v3 and v4)
      * 
-     * POST /api/nsk/v3/availability/search/simple
+     * POST /api/nsk/v4/availability/search/simple (NEW - Recommended)
+     * POST /api/nsk/v3/availability/search/simple (Legacy support)
      * Simple search with common criteria, uses default settings for the rest
      * 
      * @param array $searchCriteria Simple search criteria
+     * @param int $version API version (3 or 4, default: 4)
      * @return array Availability search results
      * @throws JamboJetApiException
      */
-    public function searchSimple(array $searchCriteria): array
+    public function searchSimple(array $searchCriteria, int $version = 4): array
     {
         $this->validateSimpleRequest($searchCriteria);
+        $this->validateApiVersion($version, [3, 4]);
 
         try {
-            return $this->post('api/nsk/v3/availability/search/simple', $searchCriteria);
+            return $this->post("api/nsk/v{$version}/availability/search/simple", $searchCriteria);
         } catch (\Exception $e) {
             throw new JamboJetApiException(
                 'Simple availability search failed: ' . $e->getMessage(),
@@ -79,21 +83,23 @@ class AvailabilityService implements AvailabilityInterface
     }
 
     /**
-     * Low fare availability search
+     * Low fare availability search (FIXED - Now uses v3)
      * 
-     * POST /api/nsk/v2/availability/lowfare
+     * POST /api/nsk/v3/availability/lowfare (UPDATED from v2)
      * Search for lowest fares with full configuration control
      * 
      * @param array $request Low fare availability request
+     * @param int $version API version (2 or 3, default: 3)
      * @return array Low fare search results
      * @throws JamboJetApiException
      */
-    public function getLowestFares(array $request): array
+    public function getLowestFares(array $request, int $version = 3): array
     {
         $this->validateLowFareRequest($request);
+        $this->validateApiVersion($version, [2, 3]);
 
         try {
-            return $this->post('api/nsk/v2/availability/lowfare', $request);
+            return $this->post("api/nsk/v{$version}/availability/lowfare", $request);
         } catch (\Exception $e) {
             throw new JamboJetApiException(
                 'Low fare search failed: ' . $e->getMessage(),
@@ -104,21 +110,23 @@ class AvailabilityService implements AvailabilityInterface
     }
 
     /**
-     * Simple low fare availability search
+     * Simple low fare availability search (FIXED - Now uses v3)
      * 
-     * POST /api/nsk/v2/availability/lowfare/simple
+     * POST /api/nsk/v3/availability/lowfare/simple (UPDATED from v2)
      * Simple low fare search with basic criteria
      * 
      * @param array $searchCriteria Simple low fare search criteria
+     * @param int $version API version (2 or 3, default: 3)
      * @return array Low fare search results
      * @throws JamboJetApiException
      */
-    public function searchLowFareSimple(array $searchCriteria): array
+    public function searchLowFareSimple(array $searchCriteria, int $version = 3): array
     {
         $this->validateLowFareSimpleRequest($searchCriteria);
+        $this->validateApiVersion($version, [2, 3]);
 
         try {
-            return $this->post('api/nsk/v2/availability/lowfare/simple', $searchCriteria);
+            return $this->post("api/nsk/v{$version}/availability/lowfare/simple", $searchCriteria);
         } catch (\Exception $e) {
             throw new JamboJetApiException(
                 'Simple low fare search failed: ' . $e->getMessage(),
@@ -127,6 +135,40 @@ class AvailabilityService implements AvailabilityInterface
             );
         }
     }
+
+     // =================================================================
+    // AVAILABILITY WITH SSR (NEW)
+    // =================================================================
+
+    /**
+     * Availability search with SSR (NEW METHOD)
+     * 
+     * POST /api/nsk/v2/availability/search/ssr
+     * Search for availability with Special Service Requests included
+     * 
+     * @param array $searchRequest Availability with SSR search request
+     * @return array Availability with SSR results
+     * @throws JamboJetApiException
+     */
+    public function searchWithSsr(array $searchRequest): array
+    {
+        $this->validateAvailabilityWithSsrRequest($searchRequest);
+
+        try {
+            return $this->post('api/nsk/v2/availability/search/ssr', $searchRequest);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Availability with SSR search failed: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    // =================================================================
+    // FARE RULES
+    // =================================================================
+
 
     /**
      * Get fare rules for a specific fare
@@ -229,94 +271,46 @@ class AvailabilityService implements AvailabilityInterface
     }
 
     /**
-     * Quick flight search (Convenience method)
+     * Quick search - convenience wrapper for simple search
      * 
-     * Simplified interface for common one-way or round-trip searches
-     * 
-     * @param string $origin Origin airport code (3-letter IATA)
-     * @param string $destination Destination airport code (3-letter IATA)
-     * @param string $departureDate Departure date (Y-m-d format)
-     * @param string|null $returnDate Return date for round-trip (Y-m-d format)
-     * @param array $passengers Passenger count by type
-     * @param array $options Additional search options
-     * @return array Flight search results
+     * @param string $origin Origin airport code
+     * @param string $destination Destination airport code
+     * @param string $departureDate Departure date (YYYY-MM-DD)
+     * @param array $passengers Passenger types and counts
+     * @param string|null $returnDate Optional return date for round trip
+     * @return array Search results
      * @throws JamboJetApiException
      */
     public function quickSearch(
         string $origin,
         string $destination,
         string $departureDate,
-        ?string $returnDate = null,
-        array $passengers = ['adults' => 1],
-        array $options = []
+        array $passengers,
+        ?string $returnDate = null
     ): array {
-        // Validate basic parameters
-        $this->validateFormats([
+        $searchCriteria = [
             'origin' => $origin,
             'destination' => $destination,
-            'departureDate' => $departureDate
-        ], [
-            'origin' => 'airport_code',
-            'destination' => 'airport_code',
-            'departureDate' => 'date'
-        ]);
-
-        if ($returnDate) {
-            $this->validateFormats(['returnDate' => $returnDate], ['returnDate' => 'date']);
-        }
-
-        // Build search criteria
-        $criteria = [];
-
-        // Outbound journey
-        $criteria[] = [
-            'stations' => [
-                'origin' => $origin,
-                'destination' => $destination
-            ],
-            'dates' => [
-                'beginDate' => $departureDate,
-                'endDate' => $departureDate
-            ]
+            'beginDate' => $departureDate,
+            'passengers' => $passengers,
         ];
 
-        // Return journey for round-trip
         if ($returnDate) {
-            $criteria[] = [
-                'stations' => [
-                    'origin' => $destination,
-                    'destination' => $origin
-                ],
-                'dates' => [
-                    'beginDate' => $returnDate,
-                    'endDate' => $returnDate
-                ]
-            ];
+            $searchCriteria['endDate'] = $returnDate;
         }
 
-        // Build passenger criteria
-        $passengerCriteria = $this->buildPassengerCriteria($passengers);
-
-        // Build full request
-        $searchRequest = array_merge([
-            'passengers' => $passengerCriteria,
-            'criteria' => $criteria,
-            'taxesAndFees' => 'TaxesAndFees'
-        ], $options);
-
-        return $this->searchSimple($searchRequest);
+        return $this->searchSimple($searchCriteria);
     }
 
     /**
-     * Search flights by route with flexible dates
+     * Search with flexible dates - convenience wrapper for low fare search
      * 
      * @param string $origin Origin airport code
      * @param string $destination Destination airport code
-     * @param string $startDate Start of date range
-     * @param string $endDate End of date range
-     * @param array $passengers Passenger criteria
-     * @param array $options Search options
-     * @return array Flexible date search results
+     * @param string $startDate Start date for flexible search
+     * @param string $endDate End date for flexible search
+     * @param array $passengers Passenger types and counts
+     * @return array Low fare results with date options
      * @throws JamboJetApiException
      */
     public function searchFlexibleDates(
@@ -324,51 +318,21 @@ class AvailabilityService implements AvailabilityInterface
         string $destination,
         string $startDate,
         string $endDate,
-        array $passengers = ['adults' => 1],
-        array $options = []
+        array $passengers
     ): array {
-        $this->validateFormats([
-            'origin' => $origin,
-            'destination' => $destination,
-            'startDate' => $startDate,
-            'endDate' => $endDate
-        ], [
-            'origin' => 'airport_code',
-            'destination' => 'airport_code',
-            'startDate' => 'date',
-            'endDate' => 'date'
-        ]);
-
-        $searchRequest = array_merge([
-            'passengers' => $this->buildPassengerCriteria($passengers),
-            'criteria' => [[
-                'stations' => [
-                    'origin' => $origin,
-                    'destination' => $destination
-                ],
-                'dates' => [
+        $searchCriteria = [
+            'passengers' => $passengers,
+            'criteria' => [
+                [
+                    'originStationCodes' => [$origin],
+                    'destinationStationCodes' => [$destination],
                     'beginDate' => $startDate,
                     'endDate' => $endDate
                 ]
-            ]],
-            'taxesAndFees' => 'TaxesAndFees'
-        ], $options);
+            ]
+        ];
 
-        return $this->searchLowFareSimple($searchRequest);
-    }
-
-    /**
-     * Get availability by availability key (Legacy support)
-     * 
-     * @param string $availabilityKey Availability key from previous search
-     * @return array Availability data
-     * @throws JamboJetApiException
-     */
-    public function getByKey(string $availabilityKey): array
-    {
-        // This would be implemented if there's a specific endpoint for getting by key
-        // For now, return fare rules as it's the closest equivalent
-        return $this->getFareRules($availabilityKey);
+        return $this->searchLowFareSimple($searchCriteria);
     }
 
     /**
@@ -1096,34 +1060,46 @@ class AvailabilityService implements AvailabilityInterface
                 'endpoint' => '/api/nsk/v4/availability/search',
                 'version' => 'v4'
             ],
-            'simple_search' => [
+            'simple_search_v4' => [
                 'method' => 'searchSimple',
-                'description' => 'Simple availability search with default settings',
+                'description' => 'Simple availability search v4 (recommended)',
+                'endpoint' => '/api/nsk/v4/availability/search/simple',
+                'version' => 'v4'
+            ],
+            'simple_search_v3' => [
+                'method' => 'searchSimple',
+                'description' => 'Simple availability search v3',
                 'endpoint' => '/api/nsk/v3/availability/search/simple',
                 'version' => 'v3'
             ],
-            'low_fare_search' => [
+            'low_fare_search_v3' => [
                 'method' => 'getLowestFares',
-                'description' => 'Low fare availability search',
-                'endpoint' => '/api/nsk/v2/availability/lowfare',
-                'version' => 'v2'
+                'description' => 'Low fare availability search v3 (updated)',
+                'endpoint' => '/api/nsk/v3/availability/lowfare',
+                'version' => 'v3'
             ],
-            'low_fare_simple' => [
+            'low_fare_simple_v3' => [
                 'method' => 'searchLowFareSimple',
-                'description' => 'Simple low fare search',
-                'endpoint' => '/api/nsk/v2/availability/lowfare/simple',
+                'description' => 'Simple low fare search v3 (updated)',
+                'endpoint' => '/api/nsk/v3/availability/lowfare/simple',
+                'version' => 'v3'
+            ],
+            'search_with_ssr' => [
+                'method' => 'searchWithSsr',
+                'description' => 'Availability search with SSR',
+                'endpoint' => '/api/nsk/v2/availability/search/ssr',
                 'version' => 'v2'
             ],
             'quick_search' => [
                 'method' => 'quickSearch',
                 'description' => 'Convenience method for simple searches',
-                'endpoint' => 'Multiple (uses simple search)',
+                'endpoint' => 'Wrapper (uses simple search)',
                 'version' => 'Wrapper'
             ],
             'flexible_dates' => [
                 'method' => 'searchFlexibleDates',
                 'description' => 'Search with flexible date ranges',
-                'endpoint' => 'Multiple (uses low fare simple)',
+                'endpoint' => 'Wrapper (uses low fare simple)',
                 'version' => 'Wrapper'
             ]
         ];

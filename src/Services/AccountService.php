@@ -55,15 +55,20 @@ class AccountService implements AccountInterface
      * @return array Password change response
      * @throws JamboJetApiException
      */
-    public function changePassword(array $passwordData): array
+    public function changePassword(array $credentials, string $newPassword): array
     {
-        $this->validateAccountChangePasswordRequest($passwordData);
+        $requestData = [
+            'credentials' => $credentials,
+            'newPassword' => $newPassword
+        ];
+
+        $this->validateAccountChangePasswordRequest($requestData);
 
         try {
-            return $this->post('api/nsk/v1/account/password/change', $passwordData);
+            return $this->post('api/nsk/v3/account/password/change', $requestData);
         } catch (\Exception $e) {
             throw new JamboJetApiException(
-                'Account password change failed: ' . $e->getMessage(),
+                'Account password change (v3) failed: ' . $e->getMessage(),
                 $e->getCode(),
                 $e
             );
@@ -684,20 +689,36 @@ class AccountService implements AccountInterface
     // =================================================================
 
     /**
-     * Validate account password change request
+     * Validate account password change v3 request
      * 
-     * @param array $data Password change data
+     * @param array $data Password change data with credentials
      * @throws JamboJetValidationException
      */
     private function validateAccountChangePasswordRequest(array $data): void
     {
-        $this->validateRequired($data, ['username', 'currentPassword', 'newPassword']);
+        // Validate top level structure
+        $this->validateRequired($data, ['credentials', 'newPassword']);
 
-        // Validate username (typically email)
-        $this->validateFormats($data, ['username' => 'email']);
+        $credentials = $data['credentials'];
 
-        // Validate current password is not empty
-        if (empty(trim($data['currentPassword']))) {
+        // Validate either username or alternateIdentifier is provided
+        if (empty($credentials['username']) && empty($credentials['alternateIdentifier'])) {
+            throw new JamboJetValidationException(
+                'Either username or alternateIdentifier must be provided',
+                400
+            );
+        }
+
+        // Validate required credential fields
+        $this->validateRequired($credentials, ['password', 'domain', 'location', 'loginRole']);
+
+        // Validate username format if provided
+        if (!empty($credentials['username'])) {
+            $this->validateFormats(['username' => $credentials['username']], ['username' => 'email']);
+        }
+
+        // Validate password is not empty
+        if (empty(trim($credentials['password']))) {
             throw new JamboJetValidationException(
                 'Current password cannot be empty',
                 400
@@ -708,27 +729,19 @@ class AccountService implements AccountInterface
         $this->validatePasswordStrength($data['newPassword']);
 
         // Ensure new password is different from current
-        if ($data['currentPassword'] === $data['newPassword']) {
+        if ($credentials['password'] === $data['newPassword']) {
             throw new JamboJetValidationException(
                 'New password must be different from current password',
                 400
             );
         }
 
-        // Validate confirmation password if provided
-        if (isset($data['confirmPassword'])) {
-            if ($data['newPassword'] !== $data['confirmPassword']) {
-                throw new JamboJetValidationException(
-                    'Password confirmation does not match new password',
-                    400
-                );
-            }
-        }
-
-        // Validate domain if provided (for multi-domain environments)
-        if (isset($data['domain'])) {
-            $this->validateStringLengths($data, ['domain' => ['max' => 50]]);
-        }
+        // Validate domain, location, and loginRole lengths
+        $this->validateStringLengths($credentials, [
+            'domain' => ['max' => 10],
+            'location' => ['max' => 10],
+            'loginRole' => ['max' => 10]
+        ]);
     }
 
     /**

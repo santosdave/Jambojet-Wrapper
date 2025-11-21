@@ -16,6 +16,8 @@ use SantosDave\JamboJet\Contracts\NavigationInterface;
 use SantosDave\JamboJet\Contracts\SeatInterface;
 use SantosDave\JamboJet\Contracts\BundleInterface;
 use SantosDave\JamboJet\Contracts\BoardingPassInterface;
+use SantosDave\JamboJet\Contracts\CoreInterface;
+use SantosDave\JamboJet\Contracts\MessageInterface;
 
 /**
  * Main JamboJet API Client
@@ -25,6 +27,7 @@ use SantosDave\JamboJet\Contracts\BoardingPassInterface;
  * System: New Skies 4.2.1.252
  * 
  * Complete service coverage for all NSK API endpoints:
+ * - Core System Operations (Redis, GraphQL, Pricing, Promotions)
  * - Authentication & Token Management
  * - Availability & Search Operations
  * - Booking & Reservation Management
@@ -56,7 +59,7 @@ class JamboJetClient
 
     /**
      * Authentication & Token Management
-     * Handles: /api/nsk/v1/token endpoints
+     * Handles: /api/auth/v1/token/user endpoints
      */
     public function auth(): AuthenticationInterface
     {
@@ -185,6 +188,30 @@ class JamboJetClient
     }
 
     // ==========================================
+    // CORE SYSTEM MODULE (NEW)
+    // ==========================================
+
+    /**
+     * Core System Operations
+     * Handles: /api/v1/redis, /api/nsk/v1/graph, /api/apo/v1/pricing, /api/nsk/v1/promotions endpoints
+     */
+    public function core(): CoreInterface
+    {
+        return app(CoreInterface::class);
+    }
+
+    /**
+     * Message Queue Operations
+     * Handles: /api/nsk/v1/messages, /api/nsk/v2/messages endpoints
+     * 
+     * @return MessageInterface
+     */
+    public function message(): MessageInterface
+    {
+        return app(MessageInterface::class);
+    }
+
+    // ==========================================
     // UTILITY METHODS
     // ==========================================
 
@@ -213,6 +240,7 @@ class JamboJetClient
     public function getApiVersion(string $module): string
     {
         $versions = [
+            'core' => 'v1',
             'authentication' => 'v1',
             'availability' => 'v4',    // Latest for search
             'booking' => 'v3',         // Stateful operations
@@ -241,34 +269,21 @@ class JamboJetClient
     public function hasService(string $service): bool
     {
         $availableServices = [
+            'core',
             'auth',
-            'authentication',
             'availability',
-            'search',
             'booking',
-            'reservation',
             'payment',
-            'payments',
             'user',
-            'users',
             'account',
             'addons',
-            'ancillary',
             'resources',
-            'config',
             'organization',
-            'org',
-            'loyalty',
             'loyaltyprogram',
             'navigation',
-            'workflow',
             'seat',
-            'seats',
             'bundle',
-            'bundles',
-            'packages',
-            'boardingpass',
-            'boarding'
+            'boardingpass'
         ];
 
         return in_array(strtolower($service), $availableServices);
@@ -282,20 +297,21 @@ class JamboJetClient
     public function getAvailableServices(): array
     {
         return [
+            'core' => 'Core System Operations',
             'auth' => 'Authentication & Token Management',
             'availability' => 'Availability & Search Operations',
-            'booking' => 'Booking & Reservation Management',
+            'booking' => 'Booking Management',
             'payment' => 'Payment Processing',
             'user' => 'User Management',
             'account' => 'Account Management',
-            'addOns' => 'Add-ons & Ancillary Services',
+            'addons' => 'Add-ons & Ancillary Services',
             'resources' => 'Resources & Configuration',
             'organization' => 'Organization Management',
-            'loyaltyProgram' => 'Loyalty Program Operations',
+            'loyaltyprogram' => 'Loyalty Program Operations',
             'navigation' => 'Booking Navigation & Workflow',
             'seat' => 'Seat Management & Assignment',
             'bundle' => 'Bundle & Package Management',
-            'boardingPass' => 'Boarding Pass Operations'
+            'boardingpass' => 'Boarding Pass Operations'
         ];
     }
 }

@@ -24,8 +24,6 @@ use SantosDave\JamboJet\Exceptions\JamboJetValidationException;
  * - GET /api/nsk/v2/resources/countries - Get countries (v2 - recommended)
  * - GET /api/nsk/v2/resources/countries/{countryCode} - Get specific country
  * - GET /api/nsk/v1/resources/cultures - Get cultures/languages
- * - GET /api/nsk/v1/resources/currencies - Get currencies
- * - GET /api/nsk/v1/resources/equipmentTypes - Get equipment types
  * - GET /api/nsk/v1/resources/fareTypes - Get fare types
  * - GET /api/nsk/v1/resources/passengerTypes - Get passenger types
  * - GET /api/nsk/v1/resources/stationTypes - Get station types
@@ -95,30 +93,6 @@ class ResourcesService implements ResourcesInterface
         }
     }
 
-    /**
-     * Get currencies
-     * 
-     * GET /api/nsk/v1/resources/currencies
-     * Retrieves all available currencies
-     * 
-     * @param array $criteria Optional filtering criteria
-     * @return array Collection of currencies
-     * @throws JamboJetApiException
-     */
-    public function getCurrencies(array $criteria = []): array
-    {
-        $this->validateResourceCriteria($criteria);
-
-        try {
-            return $this->get('api/nsk/v1/resources/currencies', $criteria);
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to get currencies: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
 
     /**
      * Get specific airport/station by code
@@ -228,30 +202,6 @@ class ResourcesService implements ResourcesInterface
         }
     }
 
-    /**
-     * Get equipment types
-     * 
-     * GET /api/nsk/v1/resources/equipmentTypes
-     * Retrieves aircraft equipment type configurations
-     * 
-     * @param array $criteria Optional filtering criteria
-     * @return array Collection of equipment types
-     * @throws JamboJetApiException
-     */
-    public function getEquipmentTypes(array $criteria = []): array
-    {
-        $this->validateResourceCriteria($criteria);
-
-        try {
-            return $this->get('api/nsk/v1/resources/equipmentTypes', $criteria);
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to get equipment types: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
 
     /**
      * Get fare types
