@@ -1,6 +1,6 @@
 {
   "name": "santosdave/jambojet-laravel",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Comprehensive Laravel package for JamboJet's NSK API integration",
   "type": "library",
   "keywords": [
