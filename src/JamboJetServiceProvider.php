@@ -6,18 +6,27 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use SantosDave\JamboJet\Contracts\AccountInterface;
 use SantosDave\JamboJet\Contracts\AddOnsInterface;
+use SantosDave\JamboJet\Contracts\ApoInterface;
 use SantosDave\JamboJet\Contracts\AuthenticationInterface;
 use SantosDave\JamboJet\Contracts\AvailabilityInterface;
 use SantosDave\JamboJet\Contracts\BoardingPassInterface;
 use SantosDave\JamboJet\Contracts\BookingInterface;
 use SantosDave\JamboJet\Contracts\BundleInterface;
+use SantosDave\JamboJet\Contracts\CollectionInterface;
 use SantosDave\JamboJet\Contracts\CoreInterface;
+use SantosDave\JamboJet\Contracts\CurrencyInterface;
+use SantosDave\JamboJet\Contracts\EquipmentInterface;
+use SantosDave\JamboJet\Contracts\ETicketInterface;
+use SantosDave\JamboJet\Contracts\InventoryInterface;
 use SantosDave\JamboJet\Contracts\LoyaltyProgramInterface;
 use SantosDave\JamboJet\Contracts\ManifestInterface;
 use SantosDave\JamboJet\Contracts\MessageInterface;
 use SantosDave\JamboJet\Contracts\NavigationInterface;
+use SantosDave\JamboJet\Contracts\OneTimeTravelNotificationInterface;
 use SantosDave\JamboJet\Contracts\OrganizationInterface;
 use SantosDave\JamboJet\Contracts\PaymentInterface;
+use SantosDave\JamboJet\Contracts\PersonInterface;
+use SantosDave\JamboJet\Contracts\QueueInterface;
 use SantosDave\JamboJet\Contracts\ResourcesInterface;
 use SantosDave\JamboJet\Contracts\SeatInterface;
 use SantosDave\JamboJet\Contracts\SettingsInterface;
@@ -27,19 +36,28 @@ use SantosDave\JamboJet\Contracts\UserInterface;
 use SantosDave\JamboJet\Contracts\VoucherInterface;
 use SantosDave\JamboJet\Services\AccountService;
 use SantosDave\JamboJet\Services\AddOnsService;
+use SantosDave\JamboJet\Services\ApoService;
 use SantosDave\JamboJet\Services\AuthenticationService;
 use SantosDave\JamboJet\Services\AvailabilityService;
 use SantosDave\JamboJet\Services\BoardingPassService;
 use SantosDave\JamboJet\Services\BookingService;
 use SantosDave\JamboJet\Services\BundleService;
+use SantosDave\JamboJet\Services\CollectionService;
 use SantosDave\JamboJet\Services\CoreService;
+use SantosDave\JamboJet\Services\CurrencyService;
+use SantosDave\JamboJet\Services\EquipmentService;
+use SantosDave\JamboJet\Services\ETicketService;
+use SantosDave\JamboJet\Services\InventoryService;
 use SantosDave\JamboJet\Services\JamboJetClient;
 use SantosDave\JamboJet\Services\LoyaltyProgramService;
 use SantosDave\JamboJet\Services\ManifestService;
 use SantosDave\JamboJet\Services\MessageService;
 use SantosDave\JamboJet\Services\NavigationService;
+use SantosDave\JamboJet\Services\OneTimeTravelNotificationService;
 use SantosDave\JamboJet\Services\OrganizationService;
 use SantosDave\JamboJet\Services\PaymentService;
+use SantosDave\JamboJet\Services\PersonService;
+use SantosDave\JamboJet\Services\QueueService;
 use SantosDave\JamboJet\Services\ResourcesService;
 use SantosDave\JamboJet\Services\SeatService;
 use SantosDave\JamboJet\Services\SettingsService;
@@ -200,6 +218,60 @@ class JamboJetServiceProvider extends ServiceProvider
             SettingsInterface::class,
             SettingsService::class
         );
+
+        // Inventory Service
+        $this->app->bind(
+            InventoryInterface::class,
+            InventoryService::class
+        );
+
+        // Queue Service
+        $this->app->bind(
+            QueueInterface::class,
+            QueueService::class
+        );
+
+        // Currency Service
+        $this->app->bind(
+            CurrencyInterface::class,
+            CurrencyService::class
+        );
+
+        // Equipment Service
+        $this->app->bind(
+            EquipmentInterface::class,
+            EquipmentService::class
+        );
+
+        //E-Ticket Service
+        $this->app->bind(
+            ETicketInterface::class,
+            ETicketService::class
+        );
+
+        // APO Service
+        $this->app->bind(
+            ApoInterface::class,
+            ApoService::class
+        );
+
+        // Collection Service
+        $this->app->bind(
+            CollectionInterface::class,
+            CollectionService::class
+        );
+
+        // One-Time Travel Notification Service
+        $this->app->bind(
+            OneTimeTravelNotificationInterface::class,
+            OneTimeTravelNotificationService::class
+        );
+
+        // Person Service
+        $this->app->bind(
+            PersonInterface::class,
+            PersonService::class
+        );
     }
 
     /**
@@ -231,6 +303,16 @@ class JamboJetServiceProvider extends ServiceProvider
             TripInterface::class,
             ManifestInterface::class,
             VoucherInterface::class,
+            SettingsInterface::class,
+            InventoryInterface::class,
+            QueueInterface::class,
+            CurrencyInterface::class,
+            EquipmentInterface::class,
+            ETicketInterface::class,
+            ApoInterface::class,
+            CollectionInterface::class,
+            OneTimeTravelNotificationInterface::class,
+            PersonInterface::class
         ];
     }
 

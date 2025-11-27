@@ -9,6 +9,7 @@ use SantosDave\JamboJet\Contracts\PaymentInterface;
 use SantosDave\JamboJet\Contracts\UserInterface;
 use SantosDave\JamboJet\Contracts\AccountInterface;
 use SantosDave\JamboJet\Contracts\AddOnsInterface;
+use SantosDave\JamboJet\Contracts\ApoInterface;
 use SantosDave\JamboJet\Contracts\ResourcesInterface;
 use SantosDave\JamboJet\Contracts\OrganizationInterface;
 use SantosDave\JamboJet\Contracts\LoyaltyProgramInterface;
@@ -16,8 +17,21 @@ use SantosDave\JamboJet\Contracts\NavigationInterface;
 use SantosDave\JamboJet\Contracts\SeatInterface;
 use SantosDave\JamboJet\Contracts\BundleInterface;
 use SantosDave\JamboJet\Contracts\BoardingPassInterface;
+use SantosDave\JamboJet\Contracts\CollectionInterface;
+use SantosDave\JamboJet\Contracts\TokenManagerInterface;
 use SantosDave\JamboJet\Contracts\CoreInterface;
+use SantosDave\JamboJet\Contracts\CurrencyInterface;
+use SantosDave\JamboJet\Contracts\EquipmentInterface;
+use SantosDave\JamboJet\Contracts\ETicketInterface;
+use SantosDave\JamboJet\Contracts\SettingsInterface;
+use SantosDave\JamboJet\Contracts\InventoryInterface;
+use SantosDave\JamboJet\Contracts\ManifestInterface;
 use SantosDave\JamboJet\Contracts\MessageInterface;
+use SantosDave\JamboJet\Contracts\OneTimeTravelNotificationInterface;
+use SantosDave\JamboJet\Contracts\PersonInterface;
+use SantosDave\JamboJet\Contracts\QueueInterface;
+use SantosDave\JamboJet\Contracts\TripInterface;
+use SantosDave\JamboJet\Contracts\VoucherInterface;
 
 /**
  * Main JamboJet API Client
@@ -130,7 +144,7 @@ class JamboJetClient
     }
 
     // ==========================================
-    // EXTENDED API MODULES (Phase 2 Additions)
+    // EXTENDED API MODULES 
     // ==========================================
 
     /**
@@ -211,6 +225,146 @@ class JamboJetClient
         return app(MessageInterface::class);
     }
 
+    /**
+     * Inventory Management Operations
+     * Handles: /api/dcs/v1/inventory, /api/dcs/v2/inventory endpoints
+     * 
+     * @return InventoryInterface
+     */
+    public function inventory(): InventoryInterface
+    {
+        return app(InventoryInterface::class);
+    }
+
+    /**
+     * Booking Queue Operations
+     * Handles: /api/nsk/v1/queues/bookings, /api/nsk/v2/queues/bookings endpoints
+     * 
+     * @return QueueInterface
+     */
+    public function queue(): QueueInterface
+    {
+        return app(QueueInterface::class);
+    }
+
+    /**
+     * Trip Management Operations
+     * Handles: /api/nsk/v1/trips endpoints
+     * 
+     * @return TripInterface
+     */
+    public function trip(): TripInterface
+    {
+        return app(TripInterface::class);
+    }
+
+    /**
+     * Manifest Operations
+     * Handles: /api/nsk/v1/manifest, /api/nsk/v2/manifest endpoints
+     * 
+     * @return ManifestInterface
+     */
+    public function manifest(): ManifestInterface
+    {
+        return app(ManifestInterface::class);
+    }
+
+    /**
+     * Voucher Operations
+     * Handles: /api/nsk/v1/vouchers endpoints
+     * 
+     * @return VoucherInterface
+     */
+    public function voucher(): VoucherInterface
+    {
+        return app(VoucherInterface::class);
+    }
+
+    /**
+     * Settings Operations
+     * Handles: /api/nsk/v1/settings, /api/nsk/v2/settings endpoints
+     * 
+     * @return SettingsInterface
+     */
+    public function settings(): SettingsInterface
+    {
+        return app(SettingsInterface::class);
+    }
+
+    /**
+     * Token Manager Operations
+     * Handles token lifecycle management and refresh operations
+     * 
+     * @return TokenManagerInterface
+     */
+    public function tokenManager(): TokenManagerInterface
+    {
+        return app(TokenManagerInterface::class);
+    }
+
+    /**
+     * Currency Operations
+     * Handles: /api/nsk/v1/currency endpoints
+     * 
+     * @return CurrencyInterface
+     */
+    public function currency(): CurrencyInterface
+    {
+        return app(CurrencyInterface::class);
+    }
+
+    /**
+     * E-Ticket Operations
+     * Handles: /api/nsk/v1/etickets endpoints
+     * 
+     * @return ETicketInterface
+     */
+    public function eTicket(): ETicketInterface
+    {
+        return app(ETicketInterface::class);
+    }
+
+    /**
+     * Equipment Operations
+     * Handles: /api/nsk/v1/equipment endpoints
+     * 
+     * @return EquipmentInterface
+     */
+    public function equipment(): EquipmentInterface
+    {
+        return app(EquipmentInterface::class);
+    }
+
+    /**
+     * Collection Operations
+     * Handles: /api/nsk/v1/collections endpoints
+     * 
+     * @return CollectionInterface
+     */
+    public function collection(): CollectionInterface
+    {
+        return app(CollectionInterface::class);
+    }
+
+    // APO 
+    public function apo(): ApoInterface
+    {
+        return app(ApoInterface::class);
+    }
+
+    // One-Time Travel Notification Service
+    public function oneTimeTravelNotification(): OneTimeTravelNotificationInterface
+    {
+        return app(OneTimeTravelNotificationInterface::class);
+    }
+
+    // Person Service
+    public function person(): PersonInterface
+    {
+        return app(PersonInterface::class);
+    }
+    
+
     // ==========================================
     // UTILITY METHODS
     // ==========================================
@@ -283,7 +437,15 @@ class JamboJetClient
             'navigation',
             'seat',
             'bundle',
-            'boardingpass'
+            'boardingpass',
+            'message',
+            'inventory',
+            'queue',
+            'trip',
+            'manifest',
+            'voucher',
+            'settings',
+
         ];
 
         return in_array(strtolower($service), $availableServices);

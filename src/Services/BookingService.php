@@ -1441,13 +1441,13 @@ class BookingService implements BookingInterface
     }
 
     /**
-     * BookingService - Phase 3A: Baggage & Boarding Operations
+     * BookingService -  Baggage & Boarding Operations
      * 
      * Add these methods to the main BookingService class
      */
 
     // =================================================================
-    // PHASE 3A: BAGGAGE MANAGEMENT (5 endpoints)
+    //  BAGGAGE MANAGEMENT (5 endpoints)
     // =================================================================
 
     /**
@@ -1553,13 +1553,13 @@ class BookingService implements BookingInterface
     }
 
     /**
-     * BookingService - Phase 3B: SSR (Special Service Request) Management
+     * BookingService -  SSR (Special Service Request) Management
      * 
      * Add these methods to the main BookingService class
      */
 
     // =================================================================
-    // PHASE 3B: SSR MANAGEMENT (11 endpoints)
+    //  SSR MANAGEMENT (11 endpoints)
     // =================================================================
 
     /**
@@ -1844,7 +1844,7 @@ class BookingService implements BookingInterface
     }
 
     /**
-     * BookingService - Phase 3C: E-Ticketing, Queues, Promotions, History
+     * BookingService -  E-Ticketing, Queues, Promotions, History
      * 
      * Add these methods to the main BookingService class
      */
@@ -2401,25 +2401,6 @@ class BookingService implements BookingInterface
 // =================================================================
 
     /**
-     * Get booking history
-     * GET /api/nsk/v1/booking/history
-     */
-    public function getBookingHistory(array $criteria = []): array
-    {
-        $this->validateHistoryCriteria($criteria);
-
-        try {
-            return $this->get('api/nsk/v1/booking/history', $criteria);
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to get booking history: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
-
-    /**
      * Get bag tag print history
      * GET /api/nsk/v1/booking/history/bagTagPrint
      */
@@ -2947,26 +2928,6 @@ class BookingService implements BookingInterface
     }
 
     /**
-     * Add ancillary service to booking
-     * POST /api/nsk/v1/bookings/{recordLocator}/ancillary
-     */
-    public function addAncillaryService(string $recordLocator, array $ancillaryData): array
-    {
-        $this->validateRecordLocator($recordLocator);
-        $this->validateAncillaryData($ancillaryData);
-
-        try {
-            return $this->post("api/nsk/v1/bookings/{$recordLocator}/ancillary", $ancillaryData);
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to add ancillary service: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
-
-    /**
      * Remove ancillary service from booking
      * DELETE /api/nsk/v1/bookings/{recordLocator}/ancillary/{ancillaryKey}
      */
@@ -2984,6 +2945,75 @@ class BookingService implements BookingInterface
                 $e
             );
         }
+    }
+
+    // ==================== HISTORY CATEGORIES ====================
+
+    /**
+     * Get available history categories
+     * GET /api/nsk/v1/bookings/{recordLocator}/history/categories
+     */
+    public function getHistoryCategories(string $recordLocator): array
+    {
+        $this->validateRecordLocator($recordLocator);
+
+        try {
+            return $this->get("api/nsk/v1/bookings/{$recordLocator}/history/categories");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get history categories: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+// ==================== ACCOUNT TRANSACTION V2 ====================
+
+    /**
+     * Add transaction to account collection (v2)
+     * POST /api/nsk/v2/bookings/{recordLocator}/account/collection/{accountCollectionKey}/transactions
+     */
+    public function addAccountTransactionV2(
+        string $recordLocator,
+        string $accountCollectionKey,
+        array $transactionData
+    ): array {
+        $this->validateRecordLocator($recordLocator);
+        $this->validateRequired([$accountCollectionKey], 'Account collection key');
+        $this->validateAccountTransactionData($transactionData);
+
+        try {
+            $endpoint = "api/nsk/v2/bookings/{$recordLocator}/account/collection/{$accountCollectionKey}/transactions";
+            return $this->post($endpoint, $transactionData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to add account transaction (v2): ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+// ==================== VERIFICATION HELPER ====================
+
+    /**
+     * Verify account transaction endpoint existence
+     * 
+     * Helper to check if endpoints are already in AccountService
+     */
+    public function verifyAccountTransactionEndpoints(): array
+    {
+        return [
+            'v1Exists' => method_exists($this, 'addAccountTransaction'),
+            'v2Exists' => method_exists($this, 'addAccountTransactionV2'),
+            'v1Path' => 'POST /api/nsk/v1/bookings/{recordLocator}/account/collection/{accountCollectionKey}/transactions',
+            'v2Path' => 'POST /api/nsk/v2/bookings/{recordLocator}/account/collection/{accountCollectionKey}/transactions',
+            'implementedInBooking' => true,
+            'checkAccountService' => true,
+            'recommendation' => 'Both v1 and v2 implemented in BookingService. Check AccountService for potential duplicates.',
+            'note' => 'These endpoints are specific to booking record locators and belong in BookingService rather than AccountService which handles person-level accounts.'
+        ];
     }
 
 // =================================================================
@@ -3132,6 +3162,669 @@ class BookingService implements BookingInterface
             );
         }
     }
+
+    /**
+     * Search bookings by record locator (v2 with pagination)
+     * GET /api/nsk/v2/bookings/searchByRecordLocator
+     * GraphQL: searchByRecordLocatorv2
+     * 
+     * Version 2 with enhanced filtering and pagination support.
+     * 
+     * @param string $recordLocator Record locator to search
+     * @param array $filters Optional filters:
+     *   - pageSize (int, 10-5000): Results per page
+     *   - lastIndex (int): Last booking index for pagination
+     *   - sourceOrganization (string, max 10): Organization code
+     *   - organizationGroupCode (string, max 3): Org group code
+     *   - searchArchive (bool): Include archived bookings
+     * @return array Search results with pagination
+     * @throws JamboJetApiException
+     * @throws JamboJetValidationException
+     */
+    public function searchByRecordLocator(string $recordLocator, array $filters = []): array
+    {
+        $this->validateRecordLocator($recordLocator);
+        $this->validateSearchFilters($filters);
+
+        try {
+            $params = array_merge(['RecordLocator' => $recordLocator], $filters);
+            $queryString = '?' . http_build_query($params);
+            return $this->get("api/nsk/v2/bookings/searchByRecordLocator{$queryString}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to search by record locator: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Search bookings by date range
+     * GET /api/nsk/v2/bookings/searchByDate
+     * GraphQL: searchByDatev2
+     * 
+     * @param string $startDateUtc Start date (ISO 8601 format)
+     * @param string $endDateUtc End date (ISO 8601 format)
+     * @param array $filters Optional filters (same as searchByRecordLocator)
+     * @return array Search results
+     * @throws JamboJetApiException
+     * @throws JamboJetValidationException
+     */
+    public function searchByDate(string $startDateUtc, string $endDateUtc, array $filters = []): array
+    {
+        $this->validateDateRange($startDateUtc, $endDateUtc);
+        $this->validateSearchFilters($filters);
+
+        try {
+            $params = array_merge([
+                'StartDateUtc' => $startDateUtc,
+                'EndDateUtc' => $endDateUtc
+            ], $this->prefixFilters($filters));
+
+            $queryString = '?' . http_build_query($params);
+            return $this->get("api/nsk/v2/bookings/searchByDate{$queryString}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to search by date: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Search bookings by person key
+     * GET /api/nsk/v1/bookings/searchByPerson
+     * GraphQL: searchByPerson
+     * 
+     * @param string $personKey Person key from GET /api/nsk/v2/persons
+     * @param array $options Search options:
+     *   - startDate (string): Start date for search range
+     *   - endDate (string): End date for search range
+     *   - pageSize (int): Results per page
+     *   - lastIndex (int): Pagination cursor
+     *   - flightNumber (string): Filter by flight number
+     *   - departureDate (string): Flight departure date
+     *   - destination (string, 3 chars): Destination code
+     *   - origin (string, 3 chars): Origin code
+     *   - sourceOrganization (string): Organization code
+     *   - organizationGroupCode (string): Org group code
+     * @return array Search results
+     * @throws JamboJetApiException
+     * @throws JamboJetValidationException
+     */
+    public function searchByPerson(string $personKey, array $options = []): array
+    {
+        $this->validateRequired([$personKey], ['Person key']);
+        $this->validatePersonSearchOptions($options);
+
+        try {
+            $params = array_merge(['PersonKey' => $personKey], $options);
+            $queryString = '?' . http_build_query($params);
+            return $this->get("api/nsk/v1/bookings/searchByPerson{$queryString}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to search by person: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Search bookings by agency/organization
+     * GET /api/nsk/v2/bookings/searchByAgency
+     * GraphQL: searchByAgencyv2
+     * 
+     * @param string $organizationCode Organization/agency code
+     * @param array $searchData Search parameters:
+     *   - firstName (string, max 32): Passenger first name
+     *   - lastName (string, max 32): Passenger last name
+     *   - phoneticSearch (bool): Use phonetic search for last name
+     *   - filters (array): Standard search filters
+     * @return array Search results
+     * @throws JamboJetApiException
+     * @throws JamboJetValidationException
+     */
+    public function searchByAgency(string $organizationCode, array $searchData = []): array
+    {
+        $this->validateOrganizationCode($organizationCode);
+        $this->validateAgencySearchData($searchData);
+
+        try {
+            $params = array_merge(
+                ['OrganizationCode' => $organizationCode],
+                $searchData
+            );
+
+            if (isset($searchData['filters'])) {
+                $params = array_merge($params, $this->prefixFilters($searchData['filters']));
+                unset($params['filters']);
+            }
+
+            $queryString = '?' . http_build_query($params);
+            return $this->get("api/nsk/v2/bookings/searchByAgency{$queryString}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to search by agency: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Search bookings by contact information
+     * GET /api/nsk/v2/bookings/searchByContact
+     * GraphQL: searchByContactv2
+     * 
+     * @param array $contactData Contact search criteria:
+     *   - firstName (string, max 32): First name
+     *   - lastName (string, max 32): Last name
+     *   - recordLocator (string, max 12): Record locator
+     *   - phoneNumber (string, max 20): Phone number
+     *   - emailAddress (string, max 266): Email address
+     *   - sourceOrganization (string, max 10): Organization code
+     *   - organizationGroupCode (string, max 3): Org group code
+     *   - searchArchive (bool): Include archived bookings
+     * @return array Search results
+     * @throws JamboJetApiException
+     * @throws JamboJetValidationException
+     */
+    public function searchByContact(array $contactData): array
+    {
+        $this->validateContactSearchData($contactData);
+
+        try {
+            $queryString = '?' . http_build_query($contactData);
+            return $this->get("api/nsk/v2/bookings/searchByContact{$queryString}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to search by contact: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Search bookings by third party record locator
+     * GET /api/nsk/v3/bookings/searchByThirdPartyRecordLocator
+     * GraphQL: searchByThirdPartyRecordLocatorv3
+     * 
+     * @param array $searchParams Search parameters:
+     *   - systemCode (string, max 3): System code
+     *   - agentId (int): Agent identifier
+     *   - organizationCode (string, max 10): Organization code
+     *   - recordLocator (string, max 12): Record locator
+     *   - pageSize (int, 10-5000): Results per page
+     *   - lastIndex (int): Pagination cursor
+     *   - sourceOrganization (string): Organization filter
+     *   - organizationGroupCode (string): Org group code
+     *   - searchArchive (bool): Include archived bookings
+     * @return array Search results
+     * @throws JamboJetApiException
+     * @throws JamboJetValidationException
+     */
+    public function searchByThirdPartyRecordLocator(array $searchParams): array
+    {
+        $this->validateThirdPartySearchParams($searchParams);
+
+        try {
+            $queryString = '?' . http_build_query($searchParams);
+            return $this->get("api/nsk/v3/bookings/searchByThirdPartyRecordLocator{$queryString}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to search by third party record locator: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Search bookings by reference number (Rail customers)
+     * GET /api/nsk/v2/bookings/searchByReferenceNumber
+     * GraphQL: searchByReferenceNumberv2
+     * 
+     * @param int $referenceNumber Reference number for ticketing/check-in
+     * @param array $searchParams Additional parameters:
+     *   - agentId (int): Agent identifier
+     *   - organizationCode (string, max 10): Organization code
+     *   - pageSize (int): Results per page
+     *   - lastIndex (int): Pagination cursor
+     *   - sourceOrganization (string): Organization filter
+     *   - organizationGroupCode (string): Org group code
+     *   - searchArchive (bool): Include archived bookings
+     * @return array Search results
+     * @throws JamboJetApiException
+     * @throws JamboJetValidationException
+     */
+    public function searchByReferenceNumber(int $referenceNumber, array $searchParams = []): array
+    {
+        $this->validateRequired([$referenceNumber], ['Reference number']);
+        $this->validateReferenceNumberSearchParams($searchParams);
+
+        try {
+            $params = array_merge(['ReferenceNumber' => $referenceNumber], $searchParams);
+            $queryString = '?' . http_build_query($params);
+            return $this->get("api/nsk/v2/bookings/searchByReferenceNumber{$queryString}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to search by reference number: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Search bookings by agent code
+     * GET /api/nsk/v2/bookings/searchByAgentCode
+     * GraphQL: searchByAgentCodev2
+     * 
+     * @param string $agentCode Agent code (name) that created booking
+     * @param array $searchData Additional search data:
+     *   - domainCode (string, max 5): Domain code
+     *   - firstName (string, max 32): Passenger first name
+     *   - lastName (string, max 32): Passenger last name
+     *   - phoneticSearch (bool): Use phonetic search
+     *   - filters (array): Standard search filters
+     * @return array Search results
+     * @throws JamboJetApiException
+     * @throws JamboJetValidationException
+     */
+    public function searchByAgentCode(string $agentCode, array $searchData = []): array
+    {
+        $this->validateRequired([$agentCode], ['Agent code']);
+        $this->validateAgentCodeSearchData($searchData);
+
+        try {
+            $params = array_merge(['AgentCode' => $agentCode], $searchData);
+
+            if (isset($searchData['filters'])) {
+                $params = array_merge($params, $this->prefixFilters($searchData['filters']));
+                unset($params['filters']);
+            }
+
+            $queryString = '?' . http_build_query($params);
+            return $this->get("api/nsk/v2/bookings/searchByAgentCode{$queryString}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to search by agent code: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Search bookings by external payment
+     * GET /api/nsk/v1/bookings/searchByExternalPayment
+     * GraphQL: searchByExternalPayment
+     * 
+     * CONCURRENCY WARNING: Do NOT call concurrently with same session token
+     * 
+     * @param array $searchParams Search parameters:
+     *   - recordLocator (string): Booking record locator
+     *   - paymentKey (string): Specific payment key
+     *   - pageSize (int, 10-5000): Results per page
+     *   - lastIndex (int): Pagination cursor
+     * @return array Search results
+     * @throws JamboJetApiException
+     * @throws JamboJetValidationException
+     */
+    public function searchByExternalPayment(array $searchParams): array
+    {
+        $this->validateExternalPaymentSearchParams($searchParams);
+
+        try {
+            $queryString = '?' . http_build_query($searchParams);
+            return $this->get("api/nsk/v1/bookings/searchByExternalPayment{$queryString}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to search by external payment: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Search bookings by credit card (POST as GET)
+     * POST /api/nsk/v1/bookings/searchByCreditCard
+     * GraphQL: searchByCreditCardv2
+     * 
+     * This endpoint behaves like a GET but is masked as POST for security.
+     * 
+     * @param array $creditCardSearch Credit card search request:
+     *   - creditCardNumber (string, required): Full or partial CC number
+     *   - expiryDate (string, optional): Expiry date (MMYY)
+     *   - cardholderName (string, optional): Name on card
+     *   - filters (array, optional): Standard search filters
+     * @return array Search results
+     * @throws JamboJetApiException
+     * @throws JamboJetValidationException
+     */
+    public function searchByCreditCard(array $creditCardSearch): array
+    {
+        $this->validateCreditCardSearchRequest($creditCardSearch);
+
+        try {
+            return $this->post('api/nsk/v1/bookings/searchByCreditCard', $creditCardSearch);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to search by credit card: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Search bookings by customer number
+     * GET /api/nsk/v2/bookings/searchByCustomerNumber
+     * GraphQL: searchByCustomerNumberv2
+     * 
+     * @param string $customerNumber Contact's customer number
+     * @param array $searchParams Additional parameters:
+     *   - agentId (int): Agent identifier
+     *   - organizationCode (string, max 10): Organization code
+     *   - pageSize (int): Results per page
+     *   - lastIndex (int): Pagination cursor
+     * @return array Search results
+     * @throws JamboJetApiException
+     * @throws JamboJetValidationException
+     */
+    public function searchByCustomerNumber(string $customerNumber, array $searchParams = []): array
+    {
+        $this->validateCustomerNumber($customerNumber);
+        $this->validateCustomerNumberSearchParams($searchParams);
+
+        try {
+            $params = array_merge(['CustomerNumber' => $customerNumber], $searchParams);
+            $queryString = '?' . http_build_query($params);
+            return $this->get("api/nsk/v2/bookings/searchByCustomerNumber{$queryString}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to search by customer number: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Search bookings by last name
+     * GET /api/nsk/v2/bookings/searchByLastName
+     * GraphQL: searchByLastNamev2
+     * 
+     * @param string $lastName Passenger last name (max 32 chars)
+     * @param array $searchData Additional search data:
+     *   - firstName (string, max 32): Passenger first name
+     *   - phoneticSearch (bool): Use phonetic search
+     *   - filters (array): Standard search filters
+     * @return array Search results
+     * @throws JamboJetApiException
+     * @throws JamboJetValidationException
+     */
+    public function searchByLastName(string $lastName, array $searchData = []): array
+    {
+        $this->validateName($lastName, 'Last name');
+        $this->validateLastNameSearchData($searchData);
+
+        try {
+            $params = array_merge(['LastName' => $lastName], $searchData);
+
+            if (isset($searchData['filters'])) {
+                $params = array_merge($params, $this->prefixFilters($searchData['filters']));
+                unset($params['filters']);
+            }
+
+            $queryString = '?' . http_build_query($params);
+            return $this->get("api/nsk/v2/bookings/searchByLastName{$queryString}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to search by last name: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Search bookings by phone number
+     * GET /api/nsk/v2/bookings/searchByPhone
+     * GraphQL: searchByPhonev2
+     * 
+     * @param string $phoneNumber Phone number (max 20 chars)
+     * @param array $searchParams Additional parameters:
+     *   - agentId (int): Agent identifier
+     *   - organizationCode (string, max 10): Organization code
+     *   - pageSize (int): Results per page
+     *   - lastIndex (int): Pagination cursor
+     * @return array Search results
+     * @throws JamboJetApiException
+     * @throws JamboJetValidationException
+     */
+    public function searchByPhone(string $phoneNumber, array $searchParams = []): array
+    {
+        $this->validatePhoneNumber(['phoneNumber' => $phoneNumber], 'phoneNumber');
+        $this->validatePhoneSearchParams($searchParams);
+
+        try {
+            $params = array_merge(['PhoneNumber' => $phoneNumber], $searchParams);
+            $queryString = '?' . http_build_query($params);
+            return $this->get("api/nsk/v2/bookings/searchByPhone{$queryString}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to search by phone: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Search bookings by email address
+     * GET /api/nsk/v2/bookings/searchByEmail
+     * GraphQL: searchByEmailv2
+     * 
+     * @param string $emailAddress Email address (max 266 chars)
+     * @param array $searchParams Additional parameters:
+     *   - agentId (int): Agent identifier
+     *   - organizationCode (string, max 10): Organization code
+     *   - pageSize (int): Results per page
+     *   - lastIndex (int): Pagination cursor
+     * @return array Search results
+     * @throws JamboJetApiException
+     * @throws JamboJetValidationException
+     */
+    public function searchByEmail(string $emailAddress, array $searchParams = []): array
+    {
+        $this->validateEmail($emailAddress);
+        $this->validateEmailSearchParams($searchParams);
+
+        try {
+            $params = array_merge(['EmailAddress' => $emailAddress], $searchParams);
+            $queryString = '?' . http_build_query($params);
+            return $this->get("api/nsk/v2/bookings/searchByEmail{$queryString}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to search by email: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+
+
+
+
+
+    /**
+     * Prefix filter parameters with "Filters." for API compatibility
+     * 
+     * @param array $filters Filters to prefix
+     * @return array Prefixed filters
+     */
+    private function prefixFilters(array $filters): array
+    {
+        $prefixed = [];
+        foreach ($filters as $key => $value) {
+            $prefixed["Filters.{$key}"] = $value;
+        }
+        return $prefixed;
+    }
+
+    /**
+     * Validate search filters common to many search endpoints
+     * 
+     * @param array $filters Filters to validate
+     * @throws JamboJetValidationException
+     */
+    private function validateSearchFilters(array $filters): void
+    {
+        if (isset($filters['pageSize'])) {
+            $this->validatePageSize($filters['pageSize'], 10, 5000);
+        }
+
+        if (isset($filters['organizationGroupCode'])) {
+            $this->validateMaxLength($filters['organizationGroupCode'], 3, 'Organization group code');
+        }
+
+        if (isset($filters['sourceOrganization'])) {
+            $this->validateMaxLength($filters['sourceOrganization'], 10, 'Source organization');
+        }
+    }
+
+
+    /**
+     * Validate merge data
+     */
+    private function validateMergeData(array $mergeData): void
+    {
+        // Validate required source record locators
+        $this->validateRequired(
+            $mergeData['sourceRecordLocators'] ?? null,
+            'Source record locators'
+        );
+        $this->validateNotEmpty(
+            $mergeData['sourceRecordLocators'],
+            'Source record locators'
+        );
+
+        // Validate each source record locator
+        foreach ($mergeData['sourceRecordLocators'] as $sourceRecordLocator) {
+            $this->validateRecordLocator($sourceRecordLocator, 'Source record locator');
+        }
+
+        // Validate at least one source booking
+        if (count($mergeData['sourceRecordLocators']) < 1) {
+            throw new JamboJetValidationException(
+                'At least one source record locator is required for merge'
+            );
+        }
+
+        // Validate optional primary contact email
+        if (isset($mergeData['primaryContact'])) {
+            $this->validateEmail($mergeData['primaryContact'], 'Primary contact');
+        }
+
+        // Validate optional merge reason
+        if (isset($mergeData['mergeReason'])) {
+            $this->validateLength($mergeData['mergeReason'], 1, 500, 'Merge reason');
+        }
+
+        // Validate optional boolean flags
+        if (isset($mergeData['consolidatePayments']) && !is_bool($mergeData['consolidatePayments'])) {
+            throw new JamboJetValidationException('consolidatePayments must be a boolean');
+        }
+
+        if (isset($mergeData['preserveComments']) && !is_bool($mergeData['preserveComments'])) {
+            throw new JamboJetValidationException('preserveComments must be a boolean');
+        }
+    }
+
+    /**
+     * Get all history category names
+     * 
+     * Returns mapping of category IDs to names
+     * 
+     * @return array Category mapping
+     */
+    public function getHistoryCategoryNames(): array
+    {
+        return [
+            0 => 'Unknown',
+            1 => 'Baggage',
+            2 => 'BagTagPrint',
+            3 => 'BoardingPassPrint',
+            4 => 'CheckIn',
+            5 => 'ClassOfServiceChange',
+            6 => 'Comment',
+            7 => 'ConfirmedSegment',
+            8 => 'ContactChange',
+            9 => 'Converted',
+            10 => 'CouponOverride',
+            11 => 'DividePnr',
+            12 => 'FareOverride',
+            13 => 'Fee',
+            14 => 'FlightMove',
+            15 => 'GroupNameChange',
+            16 => 'Hold',
+            17 => 'ItinerarySent',
+            18 => 'ManualPayment',
+            19 => 'MoveBackPnr',
+            20 => 'NameChange',
+            21 => 'NameRemove',
+            22 => 'Payment',
+            23 => 'Pds',
+            24 => 'Promotion',
+            25 => 'QueuePlaceRemove',
+            26 => 'RecordLocator',
+            27 => 'ScheduleCancellation',
+            28 => 'ScheduleCodeShareChange',
+            29 => 'ScheduleFlightDesignatorChange',
+            30 => 'ScheduleTimeChange',
+            31 => 'SeatAssignment',
+            32 => 'SegmentChange',
+            33 => 'Reprice',
+            34 => 'SsrChange',
+            35 => 'StandByChange',
+            36 => 'TicketNumber',
+            37 => 'VerifiedTravelDocument',
+            38 => 'Apps',
+            39 => 'InhibitedOverride',
+            40 => 'CustomIdChange',
+            41 => 'HoldDateChange',
+            42 => 'AddedTravelDocument',
+            43 => 'ChangedTravelDocument'
+        ];
+    }
+
+    /**
+     * Get history category name by ID
+     * 
+     * @param int $categoryId Category ID (0-43)
+     * @return string Category name
+     * @throws JamboJetValidationException
+     */
+    public function getHistoryCategoryName(int $categoryId): string
+    {
+        $categories = $this->getHistoryCategoryNames();
+
+        if (!isset($categories[$categoryId])) {
+            throw new JamboJetValidationException(
+                "Invalid history category ID: {$categoryId}. Valid range is 0-43."
+            );
+        }
+
+        return $categories[$categoryId];
+    }
+
 
     /**
      * Get all notes for booking in state
@@ -4065,9 +4758,3728 @@ class BookingService implements BookingInterface
         }
     }
 
+    /**
+     * Get all passengers on booking in state
+     * GET /api/nsk/v1/booking/passengers
+     * 
+     * GraphQL: passengers
+     * 
+     * @return array Dictionary of passengers (passengerKey => Passenger)
+     * @throws JamboJetApiException
+     */
+    public function getPassengers(): array
+    {
+        try {
+            return $this->get('api/nsk/v1/booking/passengers');
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get passengers: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Get passenger summary
+     * GET /api/nsk/v2/booking/passengers/{passengerKey}/summary
+     * 
+     * GraphQL: passengerSummary
+     * Returns passenger summary with counts and status
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @return array Passenger summary
+     * @throws JamboJetApiException
+     */
+    public function getPassengerSummary(string $passengerKey): array
+    {
+        $this->validatePassengerKey($passengerKey);
+
+        try {
+            return $this->get("api/nsk/v2/booking/passengers/{$passengerKey}/summary");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get passenger summary: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Add passengers to booking (batch)
+     * POST /api/nsk/v2/booking/passengers
+     * 
+     * GraphQL: passengersAddBatch
+     * Adds multiple passengers in a single request
+     * 
+     * @param array $passengers Array of passenger data
+     * @return array Created passengers response
+     * @throws JamboJetApiException
+     */
+    public function addPassengersV2(array $passengers): array
+    {
+        $this->validatePassengersData($passengers);
+
+        try {
+            return $this->post('api/nsk/v2/booking/passengers', ['passengers' => $passengers]);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to add passengers: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Update passenger (v3)
+     * PUT /api/nsk/v3/booking/passengers/{passengerKey}
+     * 
+     * GraphQL: passengerSetv3
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param array $passengerData Updated passenger data
+     * @param bool $waiveNameChangeFees Waive name change fees (default: false)
+     * @param bool $syncGender Sync passenger and travel document gender (default: true)
+     * @return array Update response
+     * @throws JamboJetApiException
+     */
+    public function updatePassengerV3(
+        string $passengerKey,
+        array $passengerData,
+        bool $waiveNameChangeFees = false,
+        bool $syncGender = true
+    ): array {
+        $this->validatePassengerKey($passengerKey);
+        $this->validatePassengerData($passengerData);
+
+        try {
+            $queryParams = [
+                'waiveNameChangeFees' => $waiveNameChangeFees,
+                'syncPassengerAndTravelDocGender' => $syncGender
+            ];
+
+            return $this->put(
+                "api/nsk/v3/booking/passengers/{$passengerKey}",
+                $passengerData,
+                $queryParams
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to update passenger: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Remove passenger from booking (v2)
+     * DELETE /api/nsk/v2/booking/passengers/{passengerKey}
+     * 
+     * GraphQL: passengerDeletev2
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @return array Delete response
+     * @throws JamboJetApiException
+     */
+    public function removePassengerV2(string $passengerKey): array
+    {
+        $this->validatePassengerKey($passengerKey);
+
+        try {
+            return $this->delete("api/nsk/v2/booking/passengers/{$passengerKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to remove passenger: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Modify passenger type code
+     * POST /api/nsk/v1/booking/passengers/{passengerKey}/typeCode
+     * 
+     * GraphQL: passengerTypeCodeSet
+     * Changes passenger type (ADT, CHD, INF, etc.)
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param array $typeCodeRequest Type code modification request
+     * @return array Response with old and new passenger keys
+     * @throws JamboJetApiException
+     */
+    public function modifyPassengerTypeCode(string $passengerKey, array $typeCodeRequest): array
+    {
+        $this->validatePassengerKey($passengerKey);
+        $this->validatePassengerTypeCodeRequest($typeCodeRequest);
+
+        try {
+            return $this->post("api/nsk/v1/booking/passengers/{$passengerKey}/typeCode", $typeCodeRequest);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to modify passenger type code: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+// =================================================================
+// PASSENGER ADDRESSES - COMPLETE IMPLEMENTATION
+// =================================================================
+
+    /**
+     * Get all addresses for a passenger
+     * GET /api/nsk/v1/booking/passengers/{passengerKey}/addresses
+     * 
+     * GraphQL: passengerAddresses
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @return array List of passenger addresses
+     * @throws JamboJetApiException
+     */
+    public function getPassengerAddresses(string $passengerKey): array
+    {
+        $this->validatePassengerKey($passengerKey);
+
+        try {
+            return $this->get("api/nsk/v1/booking/passengers/{$passengerKey}/addresses");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get passenger addresses: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Add address to passenger (v2)
+     * POST /api/nsk/v2/booking/passengers/{passengerKey}/addresses
+     * 
+     * GraphQL: passengerAddressAddv2
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param array $addressData Address data
+     * @return array Created address response
+     * @throws JamboJetApiException
+     */
+    public function addPassengerAddress(string $passengerKey, array $addressData): array
+    {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateAddressData($addressData);
+
+        try {
+            return $this->post("api/nsk/v2/booking/passengers/{$passengerKey}/addresses", $addressData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to add passenger address: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Get specific passenger address (v2)
+     * GET /api/nsk/v2/booking/passengers/{passengerKey}/addresses/{addressKey}
+     * 
+     * GraphQL: passengerAddress
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param string $addressKey Unique address key
+     * @return array Passenger address
+     * @throws JamboJetApiException
+     */
+    public function getPassengerAddress(string $passengerKey, string $addressKey): array
+    {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateAddressKey($addressKey);
+
+        try {
+            return $this->get("api/nsk/v2/booking/passengers/{$passengerKey}/addresses/{$addressKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get passenger address: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Update passenger address (v3)
+     * PUT /api/nsk/v3/booking/passengers/{passengerKey}/addresses/{addressKey}
+     * 
+     * GraphQL: passengerAddressSetv3
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param string $addressKey Unique address key
+     * @param array $addressData Updated address data
+     * @return array Update response
+     * @throws JamboJetApiException
+     */
+    public function updatePassengerAddress(string $passengerKey, string $addressKey, array $addressData): array
+    {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateAddressKey($addressKey);
+        $this->validateAddressData($addressData);
+
+        try {
+            return $this->put(
+                "api/nsk/v3/booking/passengers/{$passengerKey}/addresses/{$addressKey}",
+                $addressData
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to update passenger address: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Patch passenger address (v2)
+     * PATCH /api/nsk/v2/booking/passengers/{passengerKey}/addresses/{addressKey}
+     * 
+     * GraphQL: passengerAddressModifyv2
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param string $addressKey Unique address key
+     * @param array $patchData Partial address data
+     * @return array Patch response
+     * @throws JamboJetApiException
+     */
+    public function patchPassengerAddress(string $passengerKey, string $addressKey, array $patchData): array
+    {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateAddressKey($addressKey);
+
+        try {
+            return $this->patch(
+                "api/nsk/v2/booking/passengers/{$passengerKey}/addresses/{$addressKey}",
+                $patchData
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to patch passenger address: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Delete passenger address (v2)
+     * DELETE /api/nsk/v2/booking/passengers/{passengerKey}/addresses/{addressKey}
+     * 
+     * GraphQL: passengerAddressDeletev2
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param string $addressKey Unique address key
+     * @return array Delete response
+     * @throws JamboJetApiException
+     */
+    public function deletePassengerAddress(string $passengerKey, string $addressKey): array
+    {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateAddressKey($addressKey);
+
+        try {
+            return $this->delete("api/nsk/v2/booking/passengers/{$passengerKey}/addresses/{$addressKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to delete passenger address: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+// =================================================================
+// PASSENGER TRAVEL DOCUMENTS - EXTENDED OPERATIONS
+// =================================================================
+
+    /**
+     * Get specific travel document
+     * GET /api/nsk/v1/booking/passengers/{passengerKey}/documents/{travelDocumentKey}
+     * 
+     * GraphQL: passengerTravelDocuments
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param string $documentKey Unique document key
+     * @return array Travel document
+     * @throws JamboJetApiException
+     */
+    public function getPassengerTravelDocument(string $passengerKey, string $documentKey): array
+    {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateDocumentKey($documentKey);
+
+        try {
+            return $this->get("api/nsk/v1/booking/passengers/{$passengerKey}/documents/{$documentKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get travel document: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Patch travel document (v2)
+     * PATCH /api/nsk/v2/booking/passengers/{passengerKey}/documents/{travelDocumentKey}
+     * 
+     * GraphQL: passengerTravelDocumentsModifyv2
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param string $documentKey Unique document key
+     * @param array $patchData Partial document data
+     * @param bool $syncGender Sync passenger and document gender (default: true)
+     * @return array Patch response
+     * @throws JamboJetApiException
+     */
+    public function patchPassengerTravelDocument(
+        string $passengerKey,
+        string $documentKey,
+        array $patchData,
+        bool $syncGender = true
+    ): array {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateDocumentKey($documentKey);
+
+        try {
+            $queryParams = ['syncPassengerAndTravelDocGender' => $syncGender];
+
+            return $this->patch(
+                "api/nsk/v2/booking/passengers/{$passengerKey}/documents/{$documentKey}",
+                $patchData,
+                $queryParams
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to patch travel document: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Check passenger documents (ADC - Automated Document Check)
+     * GET /api/nsk/v1/booking/passengers/{passengerKey}/documents/check
+     * 
+     * GraphQL: passengerDocumentCheck
+     * Requires committed booking and document check enabled in config
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @return array Document check status
+     * @throws JamboJetApiException
+     */
+    public function checkPassengerDocuments(string $passengerKey): array
+    {
+        $this->validatePassengerKey($passengerKey);
+
+        try {
+            return $this->get("api/nsk/v1/booking/passengers/{$passengerKey}/documents/check");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to check passenger documents: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+// =================================================================
+// PASSENGER BAGGAGE OPERATIONS
+// =================================================================
+
+    /**
+     * Get all baggage for a specific passenger
+     * GET /api/nsk/v1/booking/passengers/{passengerKey}/baggage
+     * 
+     * GraphQL: passengerBaggage
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @return array List of passenger baggage
+     * @throws JamboJetApiException
+     */
+    public function getPassengerBaggage(string $passengerKey): array
+    {
+        $this->validatePassengerKey($passengerKey);
+
+        try {
+            return $this->get("api/nsk/v1/booking/passengers/{$passengerKey}/baggage");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get passenger baggage: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Get baggage allowance for booking
+     * GET /api/nsk/v1/booking/passengers/baggageAllowance
+     * 
+     * GraphQL: passengerBaggageAllowance
+     * 
+     * @return array Baggage allowance for all passengers
+     * @throws JamboJetApiException
+     */
+    public function getBaggageAllowance(): array
+    {
+        try {
+            return $this->get('api/nsk/v1/booking/passengers/baggageAllowance');
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get baggage allowance: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Get baggage allowance by leg
+     * GET /api/nsk/v1/booking/passengers/baggageAllowance/{legKey}
+     * 
+     * GraphQL: passengerBaggageAllowanceByLeg
+     * 
+     * @param string $legKey Unique leg key
+     * @return array Baggage allowance for leg
+     * @throws JamboJetApiException
+     */
+    public function getBaggageAllowanceByLeg(string $legKey): array
+    {
+        $this->validateLegKey($legKey);
+
+        try {
+            return $this->get("api/nsk/v1/booking/passengers/baggageAllowance/{$legKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get baggage allowance by leg: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Get baggage allowance for specific passenger
+     * GET /api/nsk/v1/booking/passengers/{passengerKey}/baggageAllowance
+     * 
+     * GraphQL: passengerBaggageAllowanceByPassenger
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @return array Passenger baggage allowance
+     * @throws JamboJetApiException
+     */
+    public function getPassengerBaggageAllowance(string $passengerKey): array
+    {
+        $this->validatePassengerKey($passengerKey);
+
+        try {
+            return $this->get("api/nsk/v1/booking/passengers/{$passengerKey}/baggageAllowance");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get passenger baggage allowance: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Get baggage allowance for specific passenger and leg
+     * GET /api/nsk/v1/booking/passengers/{passengerKey}/baggageAllowance/{legKey}
+     * 
+     * GraphQL: passengerBaggageAllowanceByPassengerLeg
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param string $legKey Unique leg key
+     * @return array Passenger leg baggage allowance
+     * @throws JamboJetApiException
+     */
+    public function getPassengerBaggageAllowanceByLeg(string $passengerKey, string $legKey): array
+    {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateLegKey($legKey);
+
+        try {
+            return $this->get("api/nsk/v1/booking/passengers/{$passengerKey}/baggageAllowance/{$legKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get passenger baggage allowance by leg: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Get passenger baggage groups
+     * GET /api/nsk/v1/booking/passengers/baggage/group
+     * 
+     * GraphQL: passengersBagGroups
+     * Shows baggage group membership for all passengers and segments
+     * 
+     * @return array Baggage group memberships
+     * @throws JamboJetApiException
+     */
+    public function getPassengerBaggageGroups(): array
+    {
+        try {
+            return $this->get('api/nsk/v1/booking/passengers/baggage/group');
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get passenger baggage groups: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+
+    /**
+     * Get all infant travel documents
+     * GET /api/nsk/v1/booking/passengers/{passengerKey}/infant/documents
+     * 
+     * GraphQL: passengerInfantTravelDocuments
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @return array List of infant travel documents
+     * @throws JamboJetApiException
+     */
+    public function getInfantTravelDocuments(string $passengerKey): array
+    {
+        $this->validatePassengerKey($passengerKey);
+
+        try {
+            return $this->get("api/nsk/v1/booking/passengers/{$passengerKey}/infant/documents");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get infant travel documents: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Add infant travel document (v2)
+     * POST /api/nsk/v2/booking/passengers/{passengerKey}/infant/documents
+     * 
+     * GraphQL: passengerInfantTravelDocumentsAddv2
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param array $documentData Travel document data
+     * @param bool $syncGender Sync infant and document gender (default: true)
+     * @return array Created document response
+     * @throws JamboJetApiException
+     */
+    public function addInfantTravelDocument(
+        string $passengerKey,
+        array $documentData,
+        bool $syncGender = true
+    ): array {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateTravelDocumentData($documentData);
+
+        try {
+            $queryParams = ['syncInfantAndTravelDocGender' => $syncGender];
+
+            return $this->post(
+                "api/nsk/v2/booking/passengers/{$passengerKey}/infant/documents",
+                $documentData,
+                $queryParams
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to add infant travel document: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Get specific infant travel document
+     * GET /api/nsk/v1/booking/passengers/{passengerKey}/infant/documents/{travelDocumentKey}
+     * 
+     * GraphQL: passengerInfantTravelDocuments
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param string $documentKey Unique document key
+     * @return array Infant travel document
+     * @throws JamboJetApiException
+     */
+    public function getInfantTravelDocument(string $passengerKey, string $documentKey): array
+    {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateDocumentKey($documentKey);
+
+        try {
+            return $this->get("api/nsk/v1/booking/passengers/{$passengerKey}/infant/documents/{$documentKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get infant travel document: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Update infant travel document (v2)
+     * PUT /api/nsk/v2/booking/passengers/{passengerKey}/infant/documents/{travelDocumentKey}
+     * 
+     * GraphQL: passengerInfantTravelDocumentsSetv2
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param string $documentKey Unique document key
+     * @param array $documentData Updated document data
+     * @param bool $syncGender Sync infant and document gender (default: true)
+     * @return array Update response
+     * @throws JamboJetApiException
+     */
+    public function updateInfantTravelDocument(
+        string $passengerKey,
+        string $documentKey,
+        array $documentData,
+        bool $syncGender = true
+    ): array {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateDocumentKey($documentKey);
+        $this->validateTravelDocumentData($documentData);
+
+        try {
+            $queryParams = ['syncInfantAndTravelDocGender' => $syncGender];
+
+            return $this->put(
+                "api/nsk/v2/booking/passengers/{$passengerKey}/infant/documents/{$documentKey}",
+                $documentData,
+                $queryParams
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to update infant travel document: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Patch infant travel document (v2)
+     * PATCH /api/nsk/v2/booking/passengers/{passengerKey}/infant/documents/{travelDocumentKey}
+     * 
+     * GraphQL: passengerInfantTravelDocumentsModifyv2
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param string $documentKey Unique document key
+     * @param array $patchData Partial document data
+     * @param bool $syncGender Sync infant and document gender (default: true)
+     * @return array Patch response
+     * @throws JamboJetApiException
+     */
+    public function patchInfantTravelDocument(
+        string $passengerKey,
+        string $documentKey,
+        array $patchData,
+        bool $syncGender = true
+    ): array {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateDocumentKey($documentKey);
+
+        try {
+            $queryParams = ['syncInfantAndTravelDocGender' => $syncGender];
+
+            return $this->patch(
+                "api/nsk/v2/booking/passengers/{$passengerKey}/infant/documents/{$documentKey}",
+                $patchData,
+                $queryParams
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to patch infant travel document: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Delete infant travel document (v2)
+     * DELETE /api/nsk/v2/booking/passengers/{passengerKey}/infant/documents/{travelDocumentKey}
+     * 
+     * GraphQL: passengerInfantTravelDocumentsDeletev2
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param string $documentKey Unique document key
+     * @return array Delete response
+     * @throws JamboJetApiException
+     */
+    public function deleteInfantTravelDocument(string $passengerKey, string $documentKey): array
+    {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateDocumentKey($documentKey);
+
+        try {
+            return $this->delete("api/nsk/v2/booking/passengers/{$passengerKey}/infant/documents/{$documentKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to delete infant travel document: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Check infant documents (ADC - Automated Document Check)
+     * GET /api/nsk/v1/booking/passengers/{passengerKey}/infant/documents/check
+     * 
+     * GraphQL: passengerInfantDocumentCheck
+     * Requires committed booking and document check enabled
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @return array Infant document check status
+     * @throws JamboJetApiException
+     */
+    public function checkInfantDocuments(string $passengerKey): array
+    {
+        $this->validatePassengerKey($passengerKey);
+
+        try {
+            return $this->get("api/nsk/v1/booking/passengers/{$passengerKey}/infant/documents/check");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to check infant documents: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Get infant details (v2)
+     * GET /api/nsk/v2/booking/passengers/{passengerKey}/infant
+     * 
+     * GraphQL: passengerInfantv2
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @return array Infant details
+     * @throws JamboJetApiException
+     */
+    public function getInfantDetails(string $passengerKey): array
+    {
+        $this->validatePassengerKey($passengerKey);
+
+        try {
+            return $this->get("api/nsk/v2/booking/passengers/{$passengerKey}/infant");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get infant details: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Update infant details (v2)
+     * PUT /api/nsk/v2/booking/passengers/{passengerKey}/infant
+     * 
+     * GraphQL: passengerInfantSetv2
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param array $infantData Updated infant data
+     * @return array Update response
+     * @throws JamboJetApiException
+     */
+    public function updateInfantDetailsV2(string $passengerKey, array $infantData): array
+    {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateInfantData($infantData);
+
+        try {
+            return $this->put("api/nsk/v2/booking/passengers/{$passengerKey}/infant", $infantData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to update infant details: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Patch infant details (v2)
+     * PATCH /api/nsk/v2/booking/passengers/{passengerKey}/infant
+     * 
+     * GraphQL: passengerInfantModifyv2
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param array $patchData Partial infant data
+     * @return array Patch response
+     * @throws JamboJetApiException
+     */
+    public function patchInfantDetails(string $passengerKey, array $patchData): array
+    {
+        $this->validatePassengerKey($passengerKey);
+
+        try {
+            return $this->patch("api/nsk/v2/booking/passengers/{$passengerKey}/infant", $patchData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to patch infant details: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+// =================================================================
+// PASSENGER LOYALTY - EXTENDED OPERATIONS
+// =================================================================
+
+    /**
+     * Get passenger loyalty program (v2)
+     * GET /api/nsk/v2/booking/passengers/{passengerKey}/loyaltyProgram
+     * 
+     * GraphQL: passengerLoyaltyProgramv2
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @return array Loyalty program details
+     * @throws JamboJetApiException
+     */
+    public function getPassengerLoyalty(string $passengerKey): array
+    {
+        $this->validatePassengerKey($passengerKey);
+
+        try {
+            return $this->get("api/nsk/v2/booking/passengers/{$passengerKey}/loyaltyProgram");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get passenger loyalty: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Update passenger loyalty program (v2)
+     * PUT /api/nsk/v2/booking/passengers/{passengerKey}/loyaltyProgram
+     * 
+     * GraphQL: passengerLoyaltyProgramSetv2
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param array $loyaltyData Updated loyalty data
+     * @return array Update response
+     * @throws JamboJetApiException
+     */
+    public function updatePassengerLoyalty(string $passengerKey, array $loyaltyData): array
+    {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateLoyaltyData($loyaltyData);
+
+        try {
+            return $this->put("api/nsk/v2/booking/passengers/{$passengerKey}/loyaltyProgram", $loyaltyData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to update passenger loyalty: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+// =================================================================
+// PASSENGER FEES - EXTENDED OPERATIONS
+// =================================================================
+
+    /**
+     * Get specific passenger fee
+     * GET /api/nsk/v1/booking/passengers/{passengerKey}/fees/{feeKey}
+     * 
+     * GraphQL: passengerFee
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param string $feeKey Unique fee key
+     * @return array Passenger fee details
+     * @throws JamboJetApiException
+     */
+    public function getPassengerFee(string $passengerKey, string $feeKey): array
+    {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateFeeKey($feeKey);
+
+        try {
+            return $this->get("api/nsk/v1/booking/passengers/{$passengerKey}/fees/{$feeKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get passenger fee: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Update passenger fee
+     * PUT /api/nsk/v1/booking/passengers/{passengerKey}/fees/{feeKey}
+     * 
+     * GraphQL: passengerFeeSet
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param string $feeKey Unique fee key
+     * @param array $feeData Updated fee data
+     * @return array Update response
+     * @throws JamboJetApiException
+     */
+    public function updatePassengerFee(string $passengerKey, string $feeKey, array $feeData): array
+    {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateFeeKey($feeKey);
+        $this->validateFeeData($feeData);
+
+        try {
+            return $this->put("api/nsk/v1/booking/passengers/{$passengerKey}/fees/{$feeKey}", $feeData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to update passenger fee: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Patch passenger fee
+     * PATCH /api/nsk/v1/booking/passengers/{passengerKey}/fees/{feeKey}
+     * 
+     * GraphQL: passengerFeeModify
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param string $feeKey Unique fee key
+     * @param array $patchData Partial fee data
+     * @return array Patch response
+     * @throws JamboJetApiException
+     */
+    public function patchPassengerFee(string $passengerKey, string $feeKey, array $patchData): array
+    {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateFeeKey($feeKey);
+
+        try {
+            return $this->patch("api/nsk/v1/booking/passengers/{$passengerKey}/fees/{$feeKey}", $patchData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to patch passenger fee: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+// =================================================================
+// PASSENGER PRICE BREAKDOWNS
+// =================================================================
+
+    /**
+     * Get all passenger price breakdowns
+     * GET /api/nsk/v1/booking/passengers/breakdown
+     * 
+     * Returns price breakdown per passenger
+     * 
+     * @return array Dictionary of passenger price breakdowns
+     * @throws JamboJetApiException
+     */
+    public function getPassengerPriceBreakdowns(): array
+    {
+        try {
+            return $this->get('api/nsk/v1/booking/passengers/breakdown');
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get passenger price breakdowns: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Get passenger price breakdown by type
+     * GET /api/nsk/v1/booking/passengers/breakdown/byType
+     * 
+     * Returns price breakdown grouped by passenger type (ADT, CHD, INF)
+     * 
+     * @return array Dictionary of passenger type price breakdowns
+     * @throws JamboJetApiException
+     */
+    public function getPassengerPriceBreakdownsByType(): array
+    {
+        try {
+            return $this->get('api/nsk/v1/booking/passengers/breakdown/byType');
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get passenger price breakdowns by type: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+
+    /**
+     * Get all passenger travel notifications
+     * GET /api/nsk/v1/booking/passengers/{passengerAlternateKey}/travelNotifications
+     * 
+     * GraphQL: passengerTravelNotifications
+     * Note: Uses passengerAlternateKey (null until booking committed)
+     * 
+     * @param string $passengerAlternateKey Passenger alternate key
+     * @return array List of travel notifications
+     * @throws JamboJetApiException
+     */
+    public function getPassengerTravelNotifications(string $passengerAlternateKey): array
+    {
+        $this->validatePassengerKey($passengerAlternateKey);
+
+        try {
+            return $this->get("api/nsk/v1/booking/passengers/{$passengerAlternateKey}/travelNotifications");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get travel notifications: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Create passenger travel notification
+     * POST /api/nsk/v1/booking/passengers/{passengerAlternateKey}/travelNotifications
+     * 
+     * GraphQL: passengerTravelNotificationsAdd
+     * 
+     * @param string $passengerAlternateKey Passenger alternate key
+     * @param array $notificationData Notification data
+     * @return array Created notification response
+     * @throws JamboJetApiException
+     */
+    public function addPassengerTravelNotification(string $passengerAlternateKey, array $notificationData): array
+    {
+        $this->validatePassengerKey($passengerAlternateKey);
+        $this->validateTravelNotificationData($notificationData);
+
+        try {
+            return $this->post(
+                "api/nsk/v1/booking/passengers/{$passengerAlternateKey}/travelNotifications",
+                $notificationData
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to add travel notification: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Get specific passenger travel notification
+     * GET /api/nsk/v1/booking/passengers/{passengerAlternateKey}/travelNotifications/{travelNotificationKey}
+     * 
+     * GraphQL: passengerTravelNotification
+     * 
+     * @param string $passengerAlternateKey Passenger alternate key
+     * @param string $notificationKey Travel notification key
+     * @return array Travel notification details
+     * @throws JamboJetApiException
+     */
+    public function getPassengerTravelNotification(string $passengerAlternateKey, string $notificationKey): array
+    {
+        $this->validatePassengerKey($passengerAlternateKey);
+        $this->validateNotificationKey($notificationKey);
+
+        try {
+            return $this->get(
+                "api/nsk/v1/booking/passengers/{$passengerAlternateKey}/travelNotifications/{$notificationKey}"
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get travel notification: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Update passenger travel notification
+     * PUT /api/nsk/v1/booking/passengers/{passengerAlternateKey}/travelNotifications/{travelNotificationKey}
+     * 
+     * GraphQL: passengerTravelNotificationsSet
+     * 
+     * @param string $passengerAlternateKey Passenger alternate key
+     * @param string $notificationKey Travel notification key
+     * @param array $notificationData Updated notification data
+     * @return array Update response
+     * @throws JamboJetApiException
+     */
+    public function updatePassengerTravelNotification(
+        string $passengerAlternateKey,
+        string $notificationKey,
+        array $notificationData
+    ): array {
+        $this->validatePassengerKey($passengerAlternateKey);
+        $this->validateNotificationKey($notificationKey);
+        $this->validateTravelNotificationData($notificationData);
+
+        try {
+            return $this->put(
+                "api/nsk/v1/booking/passengers/{$passengerAlternateKey}/travelNotifications/{$notificationKey}",
+                $notificationData
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to update travel notification: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Delete passenger travel notification
+     * DELETE /api/nsk/v1/booking/passengers/{passengerAlternateKey}/travelNotifications/{travelNotificationKey}
+     * 
+     * GraphQL: passengerTravelNotificationsDelete
+     * 
+     * @param string $passengerAlternateKey Passenger alternate key
+     * @param string $notificationKey Travel notification key
+     * @return array Delete response
+     * @throws JamboJetApiException
+     */
+    public function deletePassengerTravelNotification(string $passengerAlternateKey, string $notificationKey): array
+    {
+        $this->validatePassengerKey($passengerAlternateKey);
+        $this->validateNotificationKey($notificationKey);
+
+        try {
+            return $this->delete(
+                "api/nsk/v1/booking/passengers/{$passengerAlternateKey}/travelNotifications/{$notificationKey}"
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to delete travel notification: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+// =================================================================
+// NOTIFICATION EVENTS
+// =================================================================
+
+    /**
+     * Get notification events for travel notification
+     * GET /api/nsk/v1/booking/passengers/{passengerAlternateKey}/travelNotifications/{travelNotificationKey}/events
+     * 
+     * GraphQL: passengerNotificationEvents
+     * Events: DepartureDelay, ArrivalDelay, ScheduleChange, CheckIn, GateInformation
+     * 
+     * @param string $passengerAlternateKey Passenger alternate key
+     * @param string $notificationKey Travel notification key
+     * @return array List of notification events
+     * @throws JamboJetApiException
+     */
+    public function getPassengerNotificationEvents(string $passengerAlternateKey, string $notificationKey): array
+    {
+        $this->validatePassengerKey($passengerAlternateKey);
+        $this->validateNotificationKey($notificationKey);
+
+        try {
+            return $this->get(
+                "api/nsk/v1/booking/passengers/{$passengerAlternateKey}/travelNotifications/{$notificationKey}/events"
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get notification events: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Get specific notification event
+     * GET /api/nsk/v1/booking/passengers/{passengerAlternateKey}/travelNotifications/{travelNotificationKey}/events/{eventType}
+     * 
+     * GraphQL: passengerNotificationEvent
+     * Event types: 0=DepartureDelay, 1=ArrivalDelay, 2=ScheduleChange, 3=CheckIn, 4=GateInformation
+     * 
+     * @param string $passengerAlternateKey Passenger alternate key
+     * @param string $notificationKey Travel notification key
+     * @param int $eventType Notification event type (0-4)
+     * @return array Notification event details
+     * @throws JamboJetApiException
+     */
+    public function getPassengerNotificationEvent(
+        string $passengerAlternateKey,
+        string $notificationKey,
+        int $eventType
+    ): array {
+        $this->validatePassengerKey($passengerAlternateKey);
+        $this->validateNotificationKey($notificationKey);
+        $this->validateNotificationEventType($eventType);
+
+        try {
+            return $this->get(
+                "api/nsk/v1/booking/passengers/{$passengerAlternateKey}/travelNotifications/{$notificationKey}/events/{$eventType}"
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get notification event: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Delete notification event
+     * DELETE /api/nsk/v1/booking/passengers/{passengerAlternateKey}/travelNotifications/{travelNotificationKey}/events/{eventType}
+     * 
+     * GraphQL: passengerNotificationEventsDelete
+     * 
+     * @param string $passengerAlternateKey Passenger alternate key
+     * @param string $notificationKey Travel notification key
+     * @param int $eventType Notification event type (0-4)
+     * @return array Delete response
+     * @throws JamboJetApiException
+     */
+    public function deletePassengerNotificationEvent(
+        string $passengerAlternateKey,
+        string $notificationKey,
+        int $eventType
+    ): array {
+        $this->validatePassengerKey($passengerAlternateKey);
+        $this->validateNotificationKey($notificationKey);
+        $this->validateNotificationEventType($eventType);
+
+        try {
+            return $this->delete(
+                "api/nsk/v1/booking/passengers/{$passengerAlternateKey}/travelNotifications/{$notificationKey}/events/{$eventType}"
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to delete notification event: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+// =================================================================
+// NOTIFICATION TIMED EVENTS
+// =================================================================
+
+    /**
+     * Get notification timed events
+     * GET /api/nsk/v1/booking/passengers/{passengerAlternateKey}/travelNotifications/{travelNotificationKey}/timedEvents
+     * 
+     * GraphQL: passengerNotificationTimedEvents
+     * Timed events: 0=Departure, 1=Arrival
+     * 
+     * @param string $passengerAlternateKey Passenger alternate key
+     * @param string $notificationKey Travel notification key
+     * @return array List of notification timed events
+     * @throws JamboJetApiException
+     */
+    public function getPassengerNotificationTimedEvents(string $passengerAlternateKey, string $notificationKey): array
+    {
+        $this->validatePassengerKey($passengerAlternateKey);
+        $this->validateNotificationKey($notificationKey);
+
+        try {
+            return $this->get(
+                "api/nsk/v1/booking/passengers/{$passengerAlternateKey}/travelNotifications/{$notificationKey}/timedEvents"
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get notification timed events: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Get specific notification timed event
+     * GET /api/nsk/v1/booking/passengers/{passengerAlternateKey}/travelNotifications/{travelNotificationKey}/timedEvents/{timedEventType}
+     * 
+     * GraphQL: passengerNotificationTimedEvent
+     * Timed event types: 0=Departure, 1=Arrival
+     * 
+     * @param string $passengerAlternateKey Passenger alternate key
+     * @param string $notificationKey Travel notification key
+     * @param int $timedEventType Notification timed event type (0-1)
+     * @return array Notification timed event details
+     * @throws JamboJetApiException
+     */
+    public function getPassengerNotificationTimedEvent(
+        string $passengerAlternateKey,
+        string $notificationKey,
+        int $timedEventType
+    ): array {
+        $this->validatePassengerKey($passengerAlternateKey);
+        $this->validateNotificationKey($notificationKey);
+        $this->validateNotificationTimedEventType($timedEventType);
+
+        try {
+            return $this->get(
+                "api/nsk/v1/booking/passengers/{$passengerAlternateKey}/travelNotifications/{$notificationKey}/timedEvents/{$timedEventType}"
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get notification timed event: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Update notification timed event
+     * PUT /api/nsk/v1/booking/passengers/{passengerAlternateKey}/travelNotifications/{travelNotificationKey}/timedEvents/{timedEventType}
+     * 
+     * GraphQL: passengerNotificationTimedEventsSet
+     * 
+     * @param string $passengerAlternateKey Passenger alternate key
+     * @param string $notificationKey Travel notification key
+     * @param int $timedEventType Notification timed event type (0-1)
+     * @param array $eventData Updated event data
+     * @return array Update response
+     * @throws JamboJetApiException
+     */
+    public function updatePassengerNotificationTimedEvent(
+        string $passengerAlternateKey,
+        string $notificationKey,
+        int $timedEventType,
+        array $eventData
+    ): array {
+        $this->validatePassengerKey($passengerAlternateKey);
+        $this->validateNotificationKey($notificationKey);
+        $this->validateNotificationTimedEventType($timedEventType);
+
+        try {
+            return $this->put(
+                "api/nsk/v1/booking/passengers/{$passengerAlternateKey}/travelNotifications/{$notificationKey}/timedEvents/{$timedEventType}",
+                $eventData
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to update notification timed event: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Delete notification timed event
+     * DELETE /api/nsk/v1/booking/passengers/{passengerAlternateKey}/travelNotifications/{travelNotificationKey}/timedEvents/{timedEventType}
+     * 
+     * GraphQL: passengerNotificationTimedEventsDelete
+     * 
+     * @param string $passengerAlternateKey Passenger alternate key
+     * @param string $notificationKey Travel notification key
+     * @param int $timedEventType Notification timed event type (0-1)
+     * @return array Delete response
+     * @throws JamboJetApiException
+     */
+    public function deletePassengerNotificationTimedEvent(
+        string $passengerAlternateKey,
+        string $notificationKey,
+        int $timedEventType
+    ): array {
+        $this->validatePassengerKey($passengerAlternateKey);
+        $this->validateNotificationKey($notificationKey);
+        $this->validateNotificationTimedEventType($timedEventType);
+
+        try {
+            return $this->delete(
+                "api/nsk/v1/booking/passengers/{$passengerAlternateKey}/travelNotifications/{$notificationKey}/timedEvents/{$timedEventType}"
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to delete notification timed event: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+// =================================================================
+// SSR OPERATIONS (PASSENGER-SPECIFIC)
+// =================================================================
+
+    /**
+     * Get SSR price quote for passenger
+     * GET /api/nsk/v1/booking/passengers/{passengerKey}/ssrs/{ssrCode}/price
+     * 
+     * GraphQL: passengerSsrPriceQuotes
+     * Returns SSR pricing for a specific passenger
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param string $ssrCode SSR code (e.g., WCHR, PETC, MEAL)
+     * @param string|null $collectedCurrencyCode Currency code for pricing
+     * @return array SSR price quote
+     * @throws JamboJetApiException
+     */
+    public function getPassengerSsrPriceQuote(
+        string $passengerKey,
+        string $ssrCode,
+        ?string $collectedCurrencyCode = null
+    ): array {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateSsrCode($ssrCode);
+
+        try {
+            $queryParams = [];
+            if ($collectedCurrencyCode !== null) {
+                $queryParams['collectedCurrencyCode'] = $collectedCurrencyCode;
+            }
+
+            return $this->get(
+                "api/nsk/v1/booking/passengers/{$passengerKey}/ssrs/{$ssrCode}/price",
+                $queryParams
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get SSR price quote: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+// =================================================================
+// VOUCHER OPERATIONS (PASSENGER-SPECIFIC)
+// =================================================================
+
+    /**
+     * Get voucher information for passenger
+     * GET /api/nsk/v1/booking/passengers/{passengerKey}/voucher
+     * 
+     * GraphQL: voucherByPassenger
+     * Returns what a voucher can pay for given passenger
+     * 
+     * @param string $passengerKey Unique passenger key
+     * @param string $voucherCode Voucher reference code
+     * @param bool $overrideRestrictions Override voucher restrictions (default: false)
+     * @return array Voucher information
+     * @throws JamboJetApiException
+     */
+    public function getPassengerVoucherInfo(
+        string $passengerKey,
+        string $voucherCode,
+        bool $overrideRestrictions = false
+    ): array {
+        $this->validatePassengerKey($passengerKey);
+        $this->validateVoucherCode($voucherCode);
+
+        try {
+            $queryParams = [
+                'ReferenceCode' => $voucherCode,
+                'OverrideRestrictions' => $overrideRestrictions
+            ];
+
+            return $this->get(
+                "api/nsk/v1/booking/passengers/{$passengerKey}/voucher",
+                $queryParams
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to get voucher info: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+// =================================================================
+// GROUP BOOKING OPERATIONS
+// =================================================================
+
+    /**
+     * Update group booking passengers (TBA - To Be Assigned)
+     * PUT /api/nsk/v1/booking/passengers/groupBooking
+     * 
+     * Updates unnamed passengers for group bookings
+     * 
+     * @param array $groupBookingData Group booking data
+     * @return array Update response
+     * @throws JamboJetApiException
+     */
+    public function updateGroupBookingPassengers(array $groupBookingData): array
+    {
+        $this->validateGroupBookingData($groupBookingData);
+
+        try {
+            return $this->put('api/nsk/v1/booking/passengers/groupBooking', $groupBookingData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException('Failed to update group booking passengers: ' . $e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    // =================================================================
+    // RECORD LOCATOR OPERATIONS (STATEFUL)
+    // =================================================================
+
+    /**
+     * Add third party record locator to booking
+     * POST /api/nsk/v1/booking/recordLocators
+     * GraphQL: recordLocatorsAdd
+     * 
+     * CONCURRENCY WARNING: Do NOT call concurrently with same session token
+     * 
+     * Third party record locators are used for cross-referencing bookings
+     * across different systems (GDS, travel agencies, airline partners)
+     * 
+     * @param array $recordLocatorData RecordLocatorCreateRequest
+     * @return array Response
+     * @throws JamboJetApiException
+     * @throws JamboJetValidationException
+     */
+    public function addRecordLocator(array $recordLocatorData): array
+    {
+        $this->validateRequired($recordLocatorData, [
+            'recordCode',
+            'systemDomainCode',
+            'owningSystemCode'
+        ]);
+
+        // Validate string lengths
+        if (
+            isset($recordLocatorData['recordCode']) &&
+            strlen($recordLocatorData['recordCode']) > 12
+        ) {
+            throw new JamboJetValidationException('Record code must be 12 characters or less');
+        }
+
+        if (
+            isset($recordLocatorData['systemDomainCode']) &&
+            strlen($recordLocatorData['systemDomainCode']) !== 3
+        ) {
+            throw new JamboJetValidationException('System domain code must be exactly 3 characters');
+        }
+
+        if (
+            isset($recordLocatorData['owningSystemCode']) &&
+            strlen($recordLocatorData['owningSystemCode']) > 3
+        ) {
+            throw new JamboJetValidationException('Owning system code must be 3 characters or less');
+        }
+
+        try {
+            return $this->post('api/nsk/v1/booking/recordLocators', $recordLocatorData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to add record locator: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Delete all record locators from booking
+     * DELETE /api/nsk/v1/booking/recordLocators
+     * GraphQL: recordLocatorsDelete
+     * 
+     * CONCURRENCY WARNING: Do NOT call concurrently with same session token
+     * 
+     * WARNING: This removes ALL third party record locators from the booking
+     * 
+     * @return array Response
+     * @throws JamboJetApiException
+     */
+    public function deleteAllRecordLocators(): array
+    {
+        try {
+            return $this->delete('api/nsk/v1/booking/recordLocators');
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to delete all record locators: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get specific record locator by key
+     * GET /api/nsk/v1/booking/recordLocators/{recordLocatorKey}
+     * GraphQL: recordLocator
+     * 
+     * Retrieves a specific third party record locator from the in-state booking
+     * 
+     * @param string $recordLocatorKey Record locator key to retrieve
+     * @return array RecordLocator data with fields:
+     *   - recordLocatorKey (string): The unique key
+     *   - recordCode (string): Record code
+     *   - systemDomainCode (string): System domain code
+     *   - owningSystemCode (string): Owning system code
+     *   - bookingSystemCode (string): Booking system code
+     *   - interactionPurpose (string): Interaction purpose
+     *   - hostedCarrierCode (string): Hosted carrier code
+     * @throws JamboJetApiException
+     */
+    public function getRecordLocator(string $recordLocatorKey): array
+    {
+        try {
+            return $this->get("api/nsk/v1/booking/recordLocators/{$recordLocatorKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get record locator: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Replace record locator data (full update)
+     * PUT /api/nsk/v1/booking/recordLocators/{recordLocatorKey}
+     * GraphQL: recordLocatorsSet
+     * 
+     * CONCURRENCY WARNING: Do NOT call concurrently with same session token
+     * 
+     * Replaces ALL data for the specified record locator
+     * 
+     * @param string $recordLocatorKey Record locator key to update
+     * @param array $recordLocatorData RecordLocatorEditRequest
+     * @return array Response
+     * @throws JamboJetApiException
+     * @throws JamboJetValidationException
+     */
+    public function updateRecordLocator(string $recordLocatorKey, array $recordLocatorData): array
+    {
+        // Validate string lengths if provided
+        if (
+            isset($recordLocatorData['recordCode']) &&
+            strlen($recordLocatorData['recordCode']) > 12
+        ) {
+            throw new JamboJetValidationException('Record code must be 12 characters or less');
+        }
+
+        if (
+            isset($recordLocatorData['systemDomainCode']) &&
+            strlen($recordLocatorData['systemDomainCode']) !== 3
+        ) {
+            throw new JamboJetValidationException('System domain code must be exactly 3 characters');
+        }
+
+        if (
+            isset($recordLocatorData['owningSystemCode']) &&
+            strlen($recordLocatorData['owningSystemCode']) > 3
+        ) {
+            throw new JamboJetValidationException('Owning system code must be 3 characters or less');
+        }
+
+        try {
+            return $this->put(
+                "api/nsk/v1/booking/recordLocators/{$recordLocatorKey}",
+                $recordLocatorData
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to update record locator: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Patch record locator data (partial update)
+     * PATCH /api/nsk/v1/booking/recordLocators/{recordLocatorKey}
+     * GraphQL: recordLocatorsModify
+     * 
+     * CONCURRENCY WARNING: Do NOT call concurrently with same session token
+     * 
+     * Updates only the specified fields, leaving others unchanged
+     * 
+     * @param string $recordLocatorKey Record locator key to update
+     * @param array $patchData Delta changes (only fields to update)
+     * @return array Response
+     * @throws JamboJetApiException
+     * @throws JamboJetValidationException
+     */
+    public function patchRecordLocator(string $recordLocatorKey, array $patchData): array
+    {
+        // Validate string lengths if provided
+        if (
+            isset($patchData['recordCode']) &&
+            strlen($patchData['recordCode']) > 12
+        ) {
+            throw new JamboJetValidationException('Record code must be 12 characters or less');
+        }
+
+        if (
+            isset($patchData['systemDomainCode']) &&
+            strlen($patchData['systemDomainCode']) !== 3
+        ) {
+            throw new JamboJetValidationException('System domain code must be exactly 3 characters');
+        }
+
+        if (
+            isset($patchData['owningSystemCode']) &&
+            strlen($patchData['owningSystemCode']) > 3
+        ) {
+            throw new JamboJetValidationException('Owning system code must be 3 characters or less');
+        }
+
+        try {
+            return $this->patch(
+                "api/nsk/v1/booking/recordLocators/{$recordLocatorKey}",
+                $patchData
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to patch record locator: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Delete specific record locator
+     * DELETE /api/nsk/v1/booking/recordLocators/{recordLocatorKey}
+     * GraphQL: recordLocatorDelete
+     * 
+     * CONCURRENCY WARNING: Do NOT call concurrently with same session token
+     * 
+     * Removes a specific third party record locator from the booking
+     * 
+     * @param string $recordLocatorKey Record locator key to delete
+     * @return array Response
+     * @throws JamboJetApiException
+     */
+    public function deleteRecordLocator(string $recordLocatorKey): array
+    {
+        try {
+            return $this->delete("api/nsk/v1/booking/recordLocators/{$recordLocatorKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to delete record locator: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    // =================================================================
+    // BOOKING REINSTATE OPERATION
+    // =================================================================
+
+    /**
+     * Reinstate a hold-canceled booking
+     * PUT /api/nsk/v1/booking/reinstate
+     * GraphQL: bookingReinstate
+     * 
+     * CONCURRENCY WARNING: Do NOT call concurrently with same session token
+     * 
+     * Reinstates a booking that has a status of "hold canceled"
+     * This allows recovery of bookings that were canceled due to hold expiration
+     * 
+     * @return array Response
+     * @throws JamboJetApiException
+     */
+    public function reinstateBooking(): array
+    {
+        try {
+            return $this->put('api/nsk/v1/booking/reinstate');
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to reinstate booking: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    // =================================================================
+    // BOOKING ACCOUNT OPERATIONS (AGENT ONLY)
+    // =================================================================
+
+    /**
+     * Get booking account and collections (Agent only)
+     * GET /api/nsk/v1/bookings/{recordLocator}/account
+     * GraphQL: bookingsAccount
+     * 
+     * CONCURRENCY WARNING: Do NOT call concurrently with same session token
+     * 
+     * Allows agents to view all payment account transactions for a booking
+     * For non-agents, use the booking credit endpoint instead
+     * 
+     * @param string $recordLocator Record locator
+     * @return array Account information
+     * @throws JamboJetApiException
+     */
+    public function getBookingAccount(string $recordLocator): array
+    {
+        try {
+            return $this->get("api/nsk/v1/bookings/{$recordLocator}/account");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get booking account: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create booking account
+     * POST /api/nsk/v1/bookings/{recordLocator}/account
+     * GraphQL: bookingsAccountAdd
+     * 
+     * CONCURRENCY WARNING: Do NOT call concurrently with same session token
+     * 
+     * Creates a new payment account for the specified booking
+     * 
+     * @param string $recordLocator Record locator
+     * @param array $accountData Account creation data
+     * @return array Response
+     * @throws JamboJetApiException
+     */
+    public function createBookingAccount(string $recordLocator, array $accountData): array
+    {
+        try {
+            return $this->post("api/nsk/v1/bookings/{$recordLocator}/account", $accountData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to create booking account: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get account collection transactions with pagination
+     * GET /api/nsk/v1/bookings/{recordLocator}/account/collections/{accountCollectionKey}/transactions
+     * GraphQL: bookingsAccountTransactions
+     * 
+     * CONCURRENCY WARNING: Do NOT call concurrently with same session token
+     * 
+     * Retrieves paginated transaction history for a specific account collection
+     * 
+     * @param string $recordLocator Record locator
+     * @param string $accountCollectionKey Account collection key
+     * @param array $params Query parameters (StartDate, EndDate, SortByNewest, PageSize, LastPageKey)
+     * @return array PagedTransactionResponse
+     * @throws JamboJetApiException
+     * @throws JamboJetValidationException
+     */
+    public function getAccountTransactions(
+        string $recordLocator,
+        string $accountCollectionKey,
+        array $params = []
+    ): array {
+        // Validate PageSize if provided
+        if (isset($params['PageSize'])) {
+            $pageSize = (int)$params['PageSize'];
+            if ($pageSize < 10 || $pageSize > 5000) {
+                throw new JamboJetValidationException('PageSize must be between 10 and 5000');
+            }
+        }
+
+        // Validate date formats if provided
+        if (isset($params['StartDate']) && !($params['StartDate'] instanceof \DateTime)) {
+            if (!strtotime($params['StartDate'])) {
+                throw new JamboJetValidationException('StartDate must be a valid date format');
+            }
+        }
+
+        if (isset($params['EndDate']) && !($params['EndDate'] instanceof \DateTime)) {
+            if (!strtotime($params['EndDate'])) {
+                throw new JamboJetValidationException('EndDate must be a valid date format');
+            }
+        }
+
+        try {
+            $endpoint = "api/nsk/v1/bookings/{$recordLocator}/account/collections/{$accountCollectionKey}/transactions";
+            return $this->get($endpoint, $params);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get account transactions: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    // =================================================================
+    // QUEUE OPERATIONS (STATELESS)
+    // =================================================================
+
+    /**
+     * Get booking queue details
+     * POST /api/nsk/v1/bookings/{recordLocator}/queues/{queueCode}
+     * GraphQL: bookingsQueues
+     * 
+     * CONCURRENCY WARNING: Do NOT call concurrently with same session token
+     * 
+     * Retrieves queue information for a specific booking
+     * 
+     * @param string $recordLocator Record locator
+     * @param string $queueCode Queue code to query
+     * @param array $queueRequest BookingQueuesRequest
+     * @return array Queue details
+     * @throws JamboJetApiException
+     */
+    public function getBookingQueues(
+        string $recordLocator,
+        string $queueCode,
+        array $queueRequest
+    ): array {
+        try {
+            return $this->post(
+                "api/nsk/v1/bookings/{$recordLocator}/queues/{$queueCode}",
+                $queueRequest
+            );
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get booking queues: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    // =================================================================
+    // STATELESS SEAT OPERATIONS
+    // =================================================================
+
+    /**
+     * Add seat assignment (stateless operation)
+     * POST /api/nsk/v1/bookings/{recordLocator}/passengers/{passengerKey}/seats/{unitKey}
+     * GraphQL: bookingsSeatsAdd
+     * 
+     * CONCURRENCY WARNING: Do NOT call concurrently with same session token
+     * 
+     * Stateless seat assignment for external integrations
+     * Does not require booking to be loaded into session state
+     * 
+     * @param string $recordLocator Record locator
+     * @param string $passengerKey Passenger key
+     * @param string $unitKey Unit key (seat identifier)
+     * @param array $seatRequest AddUnitStatelessConfig
+     * @return array Response
+     * @throws JamboJetApiException
+     */
+    public function addSeatStateless(
+        string $recordLocator,
+        string $passengerKey,
+        string $unitKey,
+        array $seatRequest
+    ): array {
+        try {
+            $endpoint = "api/nsk/v1/bookings/{$recordLocator}/passengers/{$passengerKey}/seats/{$unitKey}";
+            return $this->post($endpoint, $seatRequest);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to add seat (stateless): ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Delete seat assignment (stateless operation) - Agent only
+     * DELETE /api/nsk/v1/bookings/{recordLocator}/passengers/{passengerKey}/seats/{unitKey}
+     * GraphQL: bookingsSeatDelete, bookingsSeatsDelete
+     * 
+     * CONCURRENCY WARNING: Do NOT call concurrently with same session token
+     * 
+     * Agent-only operation to remove seat assignments
+     * 
+     * @param string $recordLocator Record locator
+     * @param string $passengerKey Passenger key
+     * @param string $unitKey Unit key (seat identifier)
+     * @param array $deleteRequest DeleteUnitStatelessConfig
+     * @return array Response
+     * @throws JamboJetApiException
+     */
+    public function deleteSeatStateless(
+        string $recordLocator,
+        string $passengerKey,
+        string $unitKey,
+        array $deleteRequest
+    ): array {
+        try {
+            $endpoint = "api/nsk/v1/bookings/{$recordLocator}/passengers/{$passengerKey}/seats/{$unitKey}";
+            return $this->delete($endpoint, $deleteRequest);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to delete seat (stateless): ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    // =================================================================
+    // BOARDING OPERATIONS (DCS - Departure Control System)
+    // =================================================================
+
+    /**
+     * Unboard passenger by leg
+     * DELETE /api/dcs/v1/boarding/{recordLocator}/legs/{legKey}/passengers/{passengerKey}
+     * GraphQL: unboardByLeg
+     * 
+     * CONCURRENCY WARNING: Do NOT call concurrently with same session token
+     * 
+     * Removes a passenger from boarded status for a specific leg
+     * Part of Departure Control System (DCS) operations
+     * 
+     * @param string $recordLocator Record locator
+     * @param string $legKey Leg key
+     * @param string $passengerKey Passenger key
+     * @return array Response
+     * @throws JamboJetApiException
+     */
+    public function unboardPassengerByLeg(
+        string $recordLocator,
+        string $legKey,
+        string $passengerKey
+    ): array {
+        try {
+            $endpoint = "api/dcs/v1/boarding/{$recordLocator}/legs/{$legKey}/passengers/{$passengerKey}";
+            return $this->delete($endpoint);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to unboard passenger by leg: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Board passenger by segment
+     * POST /api/dcs/v2/boarding/{recordLocator}/segments/{segmentKey}/passengers/{passengerKey}
+     * GraphQL: boardBySegment
+     * 
+     * CONCURRENCY WARNING: Do NOT call concurrently with same session token
+     * 
+     * Boards a passenger on a specific segment
+     * 
+     * WARNING: Do NOT use for change-of-gauge flights!
+     * If attempted on change-of-gauge flight, only the first leg will be boarded
+     * The endpoint will return success but full segment won't be boarded
+     * 
+     * @param string $recordLocator Record locator
+     * @param string $segmentKey Segment key
+     * @param string $passengerKey Passenger key
+     * @return array Response
+     * @throws JamboJetApiException
+     */
+    public function boardPassengerBySegment(
+        string $recordLocator,
+        string $segmentKey,
+        string $passengerKey
+    ): array {
+        try {
+            $endpoint = "api/dcs/v2/boarding/{$recordLocator}/segments/{$segmentKey}/passengers/{$passengerKey}";
+            return $this->post($endpoint);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to board passenger by segment: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get all record locators for booking in state
+     * GET /api/nsk/v1/booking/recordLocators
+     * GraphQL: recordLocators
+     */
+    public function getAllRecordLocators(): array
+    {
+        try {
+            return $this->get('api/nsk/v1/booking/recordLocators');
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get all record locators: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get booking by record locator (stateless)
+     * GET /api/nsk/v1/bookings/{recordLocator}
+     * GraphQL: bookingsByRecordLocator
+     */
+    public function getBookingByRecordLocator(string $recordLocator): array
+    {
+        $this->validateRecordLocator($recordLocator);
+
+        try {
+            return $this->get("api/nsk/v1/bookings/{$recordLocator}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get booking by record locator: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Search/find bookings by criteria (stateless)
+     * POST /api/nsk/v2/bookings/findBookings
+     * GraphQL: findBookings
+     */
+    public function findBookings(array $searchCriteria): array
+    {
+        $this->validateFindBookingsRequest($searchCriteria);
+
+        try {
+            return $this->post('api/nsk/v2/bookings/findBookings', $searchCriteria);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to find bookings: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Add hold to booking
+     * POST /api/nsk/v1/bookings/{recordLocator}/hold
+     */
+    public function addBookingHold(string $recordLocator, array $holdData): array
+    {
+        $this->validateRecordLocator($recordLocator);
+        $this->validateHoldData($holdData);
+
+        try {
+            return $this->post("api/nsk/v1/bookings/{$recordLocator}/hold", $holdData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to add booking hold: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Update booking hold
+     * PUT /api/nsk/v1/bookings/{recordLocator}/hold
+     */
+    public function updateBookingHold(string $recordLocator, array $holdData): array
+    {
+        $this->validateRecordLocator($recordLocator);
+        $this->validateHoldData($holdData);
+
+        try {
+            return $this->put("api/nsk/v1/bookings/{$recordLocator}/hold", $holdData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to update booking hold: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Remove booking hold
+     * DELETE /api/nsk/v1/bookings/{recordLocator}/hold
+     */
+    public function removeBookingHold(string $recordLocator): array
+    {
+        $this->validateRecordLocator($recordLocator);
+
+        try {
+            return $this->delete("api/nsk/v1/bookings/{$recordLocator}/hold");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to remove booking hold: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+// ==================== ACCOUNT OPERATIONS ====================
+
+    /**
+     * Update booking account status
+     * PUT /api/nsk/v1/bookings/{recordLocator}/account/status
+     */
+    public function updateBookingAccountStatus(string $recordLocator, array $statusData): array
+    {
+        $this->validateRecordLocator($recordLocator);
+        $this->validateAccountStatusData($statusData);
+
+        try {
+            return $this->put("api/nsk/v1/bookings/{$recordLocator}/account/status", $statusData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to update booking account status: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get all booking transactions (v2)
+     * GET /api/nsk/v2/bookings/{recordLocator}/account/transactions
+     */
+    public function getAllBookingTransactions(string $recordLocator, array $params = []): array
+    {
+        $this->validateRecordLocator($recordLocator);
+
+        if (!empty($params)) {
+            $this->validateTransactionParams($params);
+        }
+
+        try {
+            $queryString = !empty($params) ? '?' . http_build_query($params) : '';
+            return $this->get("api/nsk/v2/bookings/{$recordLocator}/account/transactions{$queryString}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get booking transactions: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get collection transactions (v2)
+     * GET /api/nsk/v2/bookings/{recordLocator}/account/collection/{accountCollectionKey}/transactions
+     */
+    public function getCollectionTransactions(
+        string $recordLocator,
+        string $accountCollectionKey,
+        array $params = []
+    ): array {
+        $this->validateRecordLocator($recordLocator);
+        $this->validateRequired([$accountCollectionKey], ['Account collection key']);
+
+        if (!empty($params)) {
+            $this->validateTransactionParams($params);
+        }
+
+        try {
+            $queryString = !empty($params) ? '?' . http_build_query($params) : '';
+            $endpoint = "api/nsk/v2/bookings/{$recordLocator}/account/collection/{$accountCollectionKey}/transactions{$queryString}";
+            return $this->get($endpoint);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get collection transactions: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Add account collection to booking
+     * POST /api/nsk/v1/bookings/{recordLocator}/account/collection
+     */
+    public function addAccountCollection(string $recordLocator, array $collectionData): array
+    {
+        $this->validateRecordLocator($recordLocator);
+        $this->validateCollectionData($collectionData);
+
+        try {
+            return $this->post("api/nsk/v1/bookings/{$recordLocator}/account/collection", $collectionData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to add account collection: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+// ==================== PAYMENT OPERATIONS ====================
+
+    /**
+     * Get all payments for booking (stateless)
+     * GET /api/nsk/v1/bookings/{recordLocator}/payments
+     */
+    public function getBookingPayments(string $recordLocator): array
+    {
+        $this->validateRecordLocator($recordLocator);
+
+        try {
+            return $this->get("api/nsk/v1/bookings/{$recordLocator}/payments");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get booking payments: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get payment history for booking
+     * GET /api/nsk/v1/bookings/{recordLocator}/payments/history
+     */
+    public function getPaymentHistory(string $recordLocator): array
+    {
+        $this->validateRecordLocator($recordLocator);
+
+        try {
+            return $this->get("api/nsk/v1/bookings/{$recordLocator}/payments/history");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get payment history: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+// ==================== CANCELLATION ====================
+
+    /**
+     * Cancel booking
+     * POST /api/nsk/v1/bookings/{recordLocator}/cancel
+     */
+    public function cancelBooking(string $recordLocator, array $cancellationData): array
+    {
+        $this->validateRecordLocator($recordLocator);
+        $this->validateCancellationData($cancellationData);
+
+        try {
+            return $this->post("api/nsk/v1/bookings/{$recordLocator}/cancel", $cancellationData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to cancel booking: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Delete check-in by journey
+     * DELETE /api/nsk/v1/bookings/checkin/{recordLocator}/journey/{journeyKey}
+     */
+    public function deleteCheckinByJourney(string $recordLocator, string $journeyKey): array
+    {
+        $this->validateRecordLocator($recordLocator);
+        $this->validateJourneyKey($journeyKey);
+
+        try {
+            return $this->delete("api/nsk/v1/bookings/checkin/{$recordLocator}/journey/{$journeyKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to delete check-in by journey: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get check-in status by segment
+     * GET /api/nsk/v1/bookings/checkin/{recordLocator}/segment/{segmentKey}/status
+     */
+    public function getCheckinStatusBySegmentRecordLocator(string $recordLocator, string $segmentKey): array
+    {
+        $this->validateRecordLocator($recordLocator);
+        $this->validateSegmentKey($segmentKey);
+
+        try {
+            return $this->get("api/nsk/v1/bookings/checkin/{$recordLocator}/segment/{$segmentKey}/status");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get check-in status: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+
+    /**
+     * Divide booking
+     * POST /api/nsk/v2/bookings/{recordLocator}/divide
+     */
+    public function divideBookingRecordLocator(string $recordLocator, array $divideData): array
+    {
+        $this->validateRecordLocator($recordLocator);
+        $this->validateDivideData($divideData);
+
+        try {
+            return $this->post("api/nsk/v2/bookings/{$recordLocator}/divide", $divideData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to divide booking: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Modify booking
+     * POST /api/nsk/v1/bookings/{recordLocator}/modify
+     */
+    public function modifyBooking(string $recordLocator, array $modificationData): array
+    {
+        $this->validateRecordLocator($recordLocator);
+        $this->validateModificationData($modificationData);
+
+        try {
+            return $this->post("api/nsk/v1/bookings/{$recordLocator}/modify", $modificationData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to modify booking: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Add transaction to account collection
+     * POST /api/nsk/v1/bookings/{recordLocator}/account/collection/{accountCollectionKey}/transactions
+     */
+    public function addAccountTransaction(
+        string $recordLocator,
+        string $accountCollectionKey,
+        array $transactionData
+    ): array {
+        $this->validateRecordLocator($recordLocator);
+        $this->validateRequired([$accountCollectionKey], ['Account collection key']);
+        $this->validateAccountTransactionData($transactionData);
+
+        try {
+            $endpoint = "api/nsk/v1/bookings/{$recordLocator}/account/collection/{$accountCollectionKey}/transactions";
+            return $this->post($endpoint, $transactionData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to add account transaction: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+// ==================== COMMENTS OPERATIONS ====================
+
+    /**
+     * Get all booking comments
+     * GET /api/nsk/v1/bookings/{recordLocator}/comments
+     */
+    public function getBookingComments(string $recordLocator): array
+    {
+        $this->validateRecordLocator($recordLocator);
+
+        try {
+            return $this->get("api/nsk/v1/bookings/{$recordLocator}/comments");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get booking comments: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Add comment to booking
+     * POST /api/nsk/v1/bookings/{recordLocator}/comments
+     */
+    public function addBookingComment(string $recordLocator, array $commentData): array
+    {
+        $this->validateRecordLocator($recordLocator);
+        $this->validateCommentData($commentData);
+
+        try {
+            return $this->post("api/nsk/v1/bookings/{$recordLocator}/comments", $commentData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to add booking comment: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Delete booking comment
+     * DELETE /api/nsk/v1/bookings/{recordLocator}/comments/{commentKey}
+     */
+    public function deleteBookingComment(string $recordLocator, string $commentKey): array
+    {
+        $this->validateRecordLocator($recordLocator);
+        $this->validateRequired([$commentKey], ['Comment key']);
+
+        try {
+            return $this->delete("api/nsk/v1/bookings/{$recordLocator}/comments/{$commentKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to delete booking comment: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+// ==================== HISTORY OPERATIONS ====================
+
+    /**
+     * Get booking history
+     * GET /api/nsk/v1/bookings/{recordLocator}/history
+     */
+    public function getBookingHistory(string $recordLocator): array
+    {
+        $this->validateRecordLocator($recordLocator);
+
+        try {
+            return $this->get("api/nsk/v1/bookings/{$recordLocator}/history");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get booking history: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get booking history by category
+     * GET /api/nsk/v1/bookings/{recordLocator}/history/{category}
+     */
+    public function getBookingHistoryByCategory(string $recordLocator, int $category): array
+    {
+        $this->validateRecordLocator($recordLocator);
+        $this->validateHistoryCategory($category);
+
+        try {
+            return $this->get("api/nsk/v1/bookings/{$recordLocator}/history/{$category}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get booking history by category: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+// ==================== ANCILLARY SERVICES ====================
+
+    /**
+     * Add ancillary service
+     * POST /api/nsk/v1/bookings/{recordLocator}/ancillary
+     */
+    public function addAncillaryService(string $recordLocator, array $ancillaryData): array
+    {
+        $this->validateRecordLocator($recordLocator);
+        $this->validateAncillaryData($ancillaryData);
+
+        try {
+            return $this->post("api/nsk/v1/bookings/{$recordLocator}/ancillary", $ancillaryData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to add ancillary service: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+
+    
+
+
     // =================================================================
     // VALIDATION METHODS - UPDATED AND COMPREHENSIVE
     // =================================================================
+
+    /**
+     * Validate split data
+     */
+    private function validateSplitData(array $splitData): void
+    {
+        // Validate required passenger keys
+        $this->validateRequired($splitData['passengerKeys'] ?? null, ['Passenger keys']);
+        $this->validateNotEmpty($splitData['passengerKeys'], 'Passenger keys');
+
+        // Validate passenger keys format
+        foreach ($splitData['passengerKeys'] as $key) {
+            $this->validatePassengerKey($key);
+        }
+
+        // Validate optional email
+        if (isset($splitData['newEmail'])) {
+            $this->validateEmail($splitData['newEmail'], 'New booking email');
+        }
+
+        // Validate payment transfers if provided
+        if (isset($splitData['paymentTransfers']) && is_array($splitData['paymentTransfers'])) {
+            foreach ($splitData['paymentTransfers'] as $transfer) {
+                if (isset($transfer['transferAmount'])) {
+                    $this->validateAmount((float)$transfer['transferAmount'], 'Transfer amount');
+                }
+            }
+        }
+    }
+
+    /**
+     * Validate divide data
+     */
+    private function validateDivideData(array $divideData): void
+    {
+        // Validate passenger keys if provided
+        if (isset($divideData['passengerKeys'])) {
+            $this->validateNotEmpty($divideData['passengerKeys'], 'Passenger keys');
+            foreach ($divideData['passengerKeys'] as $key) {
+                $this->validatePassengerKey($key);
+            }
+        }
+
+        // Validate emails if provided
+        if (isset($divideData['parentEmail'])) {
+            $this->validateEmail($divideData['parentEmail'], 'Parent email');
+        }
+
+        if (isset($divideData['childEmail'])) {
+            $this->validateEmail($divideData['childEmail'], 'Child email');
+        }
+
+        // Validate received by if provided
+        if (isset($divideData['receivedBy'])) {
+            $this->validateLength($divideData['receivedBy'], 1, 64, 'Received by');
+        }
+
+        // Validate payment transfers if provided
+        if (isset($divideData['bookingPaymentTransfers']) && is_array($divideData['bookingPaymentTransfers'])) {
+            foreach ($divideData['bookingPaymentTransfers'] as $transfer) {
+                if (isset($transfer['transferAmount'])) {
+                    $this->validateAmount((float)$transfer['transferAmount'], 'Transfer amount');
+                }
+            }
+        }
+    }
+
+    /**
+     * Validate modification data
+     */
+    private function validateModificationData(array $modificationData): void
+    {
+        // At least one modification field must be provided
+        if (empty($modificationData)) {
+            throw new JamboJetValidationException(
+                'At least one modification field must be provided'
+            );
+        }
+
+        // Validate dates if provided
+        if (isset($modificationData['newDepartureDate'])) {
+            $this->validateDateFormat($modificationData['newDepartureDate'], 'New departure date');
+        }
+
+        // Validate station codes if provided
+        if (isset($modificationData['newDepartureStation'])) {
+            $this->validateStationCode($modificationData['newDepartureStation'], 'New departure station');
+        }
+
+        if (isset($modificationData['newArrivalStation'])) {
+            $this->validateStationCode($modificationData['newArrivalStation'], 'New arrival station');
+        }
+    }
+
+    /**
+     * Validate account transaction data
+     */
+    private function validateAccountTransactionData(array $transactionData): void
+    {
+        // Validate required amount
+        $this->validateRequired($transactionData['amount'] ?? null, ['Transaction amount']);
+        $this->validateAmount((float)$transactionData['amount'], 'Transaction amount');
+
+        // Validate required type
+        $this->validateRequired($transactionData['type'] ?? null, ['Transaction type']);
+        $validTypes = [1, 2, 3, 4]; // Payment, Adjustment, Supplementary, Transfer
+        if (!in_array((int)$transactionData['type'], $validTypes)) {
+            throw new JamboJetValidationException(
+                'Transaction type must be 1 (Payment), 2 (Adjustment), 3 (Supplementary), or 4 (Transfer)'
+            );
+        }
+
+        // Validate optional note
+        if (isset($transactionData['note'])) {
+            $this->validateLength($transactionData['note'], 1, 500, 'Transaction note');
+        }
+
+        // Validate optional reference number
+        if (isset($transactionData['referenceNumber'])) {
+            $this->validateLength($transactionData['referenceNumber'], 1, 50, 'Reference number');
+        }
+    }
+
+    /**
+     * Validate comment data
+     */
+    private function validateCommentData(array $commentData): void
+    {
+        // Validate required text
+        $this->validateRequired($commentData['text'] ?? null, ['Comment text']);
+        $this->validateLength($commentData['text'], 1, 1000, 'Comment text');
+
+        // Validate optional type
+        if (isset($commentData['type'])) {
+            $this->validateLength($commentData['type'], 1, 50, 'Comment type');
+        }
+
+        // Validate optional isInternal flag
+        if (isset($commentData['isInternal']) && !is_bool($commentData['isInternal'])) {
+            throw new JamboJetValidationException('isInternal must be a boolean');
+        }
+    }
+
+    /**
+     * Validate history category
+     */
+    private function validateHistoryCategory(int $category): void
+    {
+        // Valid categories: 0-43
+        if ($category < 0 || $category > 43) {
+            throw new JamboJetValidationException(
+                'History category must be between 0 and 43'
+            );
+        }
+    }
+
+    /**
+     * Validate ancillary data
+     */
+    private function validateAncillaryData(array $ancillaryData): void
+    {
+        // Validate required service code
+        $this->validateRequired($ancillaryData['serviceCode'] ?? null, ['serviceCode']);
+        $this->validateLength($ancillaryData['serviceCode'], 1, 10, 'Service code');
+
+        // Validate required passenger keys
+        $this->validateRequired($ancillaryData['passengerKeys'] ?? null, ['passengerKeys']);
+        $this->validateNotEmpty($ancillaryData['passengerKeys'], 'Passenger keys');
+
+        foreach ($ancillaryData['passengerKeys'] as $key) {
+            $this->validatePassengerKey($key);
+        }
+
+        // Validate optional segment keys
+        if (isset($ancillaryData['segmentKeys'])) {
+            $this->validateNotEmpty($ancillaryData['segmentKeys'], 'Segment keys');
+            foreach ($ancillaryData['segmentKeys'] as $key) {
+                $this->validateSegmentKey($key);
+            }
+        }
+
+        // Validate optional quantity
+        if (isset($ancillaryData['quantity'])) {
+            $quantity = (int)$ancillaryData['quantity'];
+            if ($quantity < 1) {
+                throw new JamboJetValidationException('Quantity must be at least 1');
+            }
+        }
+    }
+
+
+    /**
+     * Validate travel notification data
+     * 
+     * @param array $notificationData Travel notification data
+     * @throws JamboJetValidationException
+     */
+    protected function validateTravelNotificationData(array $notificationData): void
+    {
+        // Required fields
+        $required = ['channelTypeCode'];
+        $this->validateRequiredFields($notificationData, $required);
+
+        // Validate channel type code
+        if (isset($notificationData['channelTypeCode'])) {
+            // Valid channel types: SMS, EMAIL, etc.
+            $validChannels = ['SMS', 'EMAIL', 'PUSH', 'VOICE'];
+            if (!in_array(strtoupper($notificationData['channelTypeCode']), $validChannels)) {
+                throw new JamboJetValidationException(
+                    "Invalid channel type code. Must be one of: " . implode(', ', $validChannels)
+                );
+            }
+        }
+
+        // Validate destination (phone number or email)
+        if (isset($notificationData['destination'])) {
+            if (empty($notificationData['destination'])) {
+                throw new JamboJetValidationException('Notification destination cannot be empty');
+            }
+
+            if (strlen($notificationData['destination']) > 100) {
+                throw new JamboJetValidationException('Notification destination must not exceed 100 characters');
+            }
+
+            // Validate format based on channel type
+            if (isset($notificationData['channelTypeCode'])) {
+                $channel = strtoupper($notificationData['channelTypeCode']);
+                $destination = $notificationData['destination'];
+
+                if ($channel === 'EMAIL' && !filter_var($destination, FILTER_VALIDATE_EMAIL)) {
+                    throw new JamboJetValidationException('Invalid email address format for EMAIL channel');
+                }
+
+                if ($channel === 'SMS' && !preg_match('/^\+?[0-9]{10,15}$/', $destination)) {
+                    throw new JamboJetValidationException('Invalid phone number format for SMS channel. Use E.164 format');
+                }
+            }
+        }
+
+        // Validate language code if provided
+        if (isset($notificationData['languageCode'])) {
+            if (strlen($notificationData['languageCode']) > 2) {
+                throw new JamboJetValidationException('Language code must be 2 characters (ISO 639-1)');
+            }
+        }
+
+        // Validate culture code if provided
+        if (isset($notificationData['cultureCode'])) {
+            if (strlen($notificationData['cultureCode']) > 10) {
+                throw new JamboJetValidationException('Culture code must not exceed 10 characters');
+            }
+        }
+
+        // Validate active flag
+        if (isset($notificationData['isActive']) && !is_bool($notificationData['isActive'])) {
+            throw new JamboJetValidationException('isActive must be a boolean');
+        }
+    }
+
+    /**
+     * Validate find bookings request
+     * 
+     * @param array $searchCriteria Search criteria
+     * @throws JamboJetValidationException
+     */
+    private function validateFindBookingsRequest(array $searchCriteria): void
+    {
+        // Validate record locator if provided
+        if (isset($searchCriteria['recordLocator'])) {
+            $this->validateRecordLocator($searchCriteria['recordLocator']);
+        }
+
+        // Validate station codes if provided
+        if (isset($searchCriteria['departureStation'])) {
+            $this->validateStationCode($searchCriteria['departureStation'], 'Departure station');
+        }
+
+        if (isset($searchCriteria['arrivalStation'])) {
+            $this->validateStationCode($searchCriteria['arrivalStation'], 'Arrival station');
+        }
+
+        // Validate organization codes if provided
+        if (isset($searchCriteria['organizationCode'])) {
+            if (strlen($searchCriteria['organizationCode']) > 10) {
+                throw new JamboJetValidationException(
+                    'Organization code must be 10 characters or less'
+                );
+            }
+        }
+
+        if (isset($searchCriteria['organizationGroupCode'])) {
+            if (strlen($searchCriteria['organizationGroupCode']) !== 3) {
+                throw new JamboJetValidationException(
+                    'Organization group code must be exactly 3 characters'
+                );
+            }
+        }
+
+        // Validate pagination parameters if provided
+        if (isset($searchCriteria['pageSize'])) {
+            $pageSize = (int) $searchCriteria['pageSize'];
+            if ($pageSize < 1 || $pageSize > 100) {
+                throw new JamboJetValidationException(
+                    'Page size must be between 1 and 100'
+                );
+            }
+        }
+
+        if (isset($searchCriteria['pageNumber'])) {
+            $pageNumber = (int) $searchCriteria['pageNumber'];
+            if ($pageNumber < 1) {
+                throw new JamboJetValidationException(
+                    'Page number must be 1 or greater'
+                );
+            }
+        }
+
+        // Validate date formats if provided
+        if (isset($searchCriteria['departureDate'])) {
+            $this->validateDateFormat($searchCriteria['departureDate'], 'Departure date');
+        }
+
+        if (isset($searchCriteria['bookingDateFrom'])) {
+            $this->validateDateFormat($searchCriteria['bookingDateFrom'], 'Booking date from');
+        }
+
+        if (isset($searchCriteria['bookingDateTo'])) {
+            $this->validateDateFormat($searchCriteria['bookingDateTo'], 'Booking date to');
+        }
+
+        // Validate email format if provided
+        if (isset($searchCriteria['emailAddress'])) {
+            if (!filter_var($searchCriteria['emailAddress'], FILTER_VALIDATE_EMAIL)) {
+                throw new JamboJetValidationException(
+                    'Invalid email address format'
+                );
+            }
+        }
+
+        // Validate at least one search criterion is provided
+        $validCriteria = [
+            'recordLocator',
+            'lastName',
+            'firstName',
+            'emailAddress',
+            'phoneNumber',
+            'departureStation',
+            'arrivalStation',
+            'departureDate',
+            'bookingDateFrom',
+            'bookingDateTo',
+            'ticketNumber',
+            'organizationCode',
+            'organizationGroupCode'
+        ];
+
+        $hasValidCriteria = false;
+        foreach ($validCriteria as $criterion) {
+            if (isset($searchCriteria[$criterion]) && !empty($searchCriteria[$criterion])) {
+                $hasValidCriteria = true;
+                break;
+            }
+        }
+
+        if (!$hasValidCriteria) {
+            throw new JamboJetValidationException(
+                'At least one search criterion must be provided'
+            );
+        }
+    }
+
+    /**
+     * Validate date format (ISO 8601)
+     * 
+     * @param string $date Date string to validate
+     * @param string $fieldName Field name for error message
+     * @throws JamboJetValidationException
+     */
+    private function validateDateFormat(string $date, string $fieldName): void
+    {
+        $dateTime = \DateTime::createFromFormat(\DateTime::ISO8601, $date);
+
+        if (!$dateTime && !$dateTime = \DateTime::createFromFormat('Y-m-d', $date)) {
+            throw new JamboJetValidationException(
+                "{$fieldName} must be in ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ)"
+            );
+        }
+    }
+
+    /**
+     * Validate notification key
+     * 
+     * @param string $notificationKey Notification key
+     * @throws JamboJetValidationException
+     */
+    protected function validateNotificationKey(string $notificationKey): void
+    {
+        if (empty($notificationKey)) {
+            throw new JamboJetValidationException('Notification key is required');
+        }
+
+        if (strlen($notificationKey) > 100) {
+            throw new JamboJetValidationException('Notification key must not exceed 100 characters');
+        }
+    }
+
+    /**
+     * Validate notification event type
+     * 
+     * Event types:
+     * 0 = DepartureDelay
+     * 1 = ArrivalDelay
+     * 2 = ScheduleChange
+     * 3 = CheckIn
+     * 4 = GateInformation
+     * 
+     * @param int $eventType Event type code
+     * @throws JamboJetValidationException
+     */
+    protected function validateNotificationEventType(int $eventType): void
+    {
+        if ($eventType < 0 || $eventType > 4) {
+            throw new JamboJetValidationException(
+                'Invalid notification event type. Must be 0-4 (DepartureDelay, ArrivalDelay, ScheduleChange, CheckIn, GateInformation)'
+            );
+        }
+    }
+
+    /**
+     * Validate notification timed event type
+     * 
+     * Timed event types:
+     * 0 = Departure
+     * 1 = Arrival
+     * 
+     * @param int $timedEventType Timed event type code
+     * @throws JamboJetValidationException
+     */
+    protected function validateNotificationTimedEventType(int $timedEventType): void
+    {
+        if ($timedEventType < 0 || $timedEventType > 1) {
+            throw new JamboJetValidationException(
+                'Invalid notification timed event type. Must be 0 (Departure) or 1 (Arrival)'
+            );
+        }
+    }
+
+    // =================================================================
+    // SSR VALIDATION
+    // =================================================================
+
+    /**
+     * Validate SSR code
+     * 
+     * @param string $ssrCode SSR code
+     * @throws JamboJetValidationException
+     */
+    protected function validateSsrCode(string $ssrCode): void
+    {
+        if (empty($ssrCode)) {
+            throw new JamboJetValidationException('SSR code is required');
+        }
+
+        // SSR codes are typically 4 characters (IATA standard)
+        if (strlen($ssrCode) < 2 || strlen($ssrCode) > 8) {
+            throw new JamboJetValidationException('SSR code must be between 2 and 8 characters');
+        }
+
+        // SSR codes should be alphanumeric
+        if (!preg_match('/^[A-Z0-9]+$/', strtoupper($ssrCode))) {
+            throw new JamboJetValidationException('SSR code must contain only letters and numbers');
+        }
+    }
+
+    // =================================================================
+    // VOUCHER VALIDATION
+    // =================================================================
+
+    /**
+     * Validate voucher code
+     * 
+     * @param string $voucherCode Voucher reference code
+     * @throws JamboJetValidationException
+     */
+    protected function validateVoucherCode(string $voucherCode): void
+    {
+        if (empty($voucherCode)) {
+            throw new JamboJetValidationException('Voucher code is required');
+        }
+
+        if (strlen($voucherCode) > 20) {
+            throw new JamboJetValidationException('Voucher code must not exceed 20 characters');
+        }
+
+        // Voucher codes should be alphanumeric with possible hyphens
+        if (!preg_match('/^[A-Z0-9\-]+$/i', $voucherCode)) {
+            throw new JamboJetValidationException('Voucher code must contain only letters, numbers, and hyphens');
+        }
+    }
+
+// =================================================================
+// HELPER METHODS FOR NOTIFICATION EVENT TYPES
+// =================================================================
+
+    /**
+     * Get notification event type name
+     * 
+     * @param int $eventType Event type code
+     * @return string Event type name
+     */
+    protected function getNotificationEventTypeName(int $eventType): string
+    {
+        $types = [
+            0 => 'DepartureDelay',
+            1 => 'ArrivalDelay',
+            2 => 'ScheduleChange',
+            3 => 'CheckIn',
+            4 => 'GateInformation'
+        ];
+
+        return $types[$eventType] ?? 'Unknown';
+    }
+
+    /**
+     * Get notification timed event type name
+     * 
+     * @param int $timedEventType Timed event type code
+     * @return string Timed event type name
+     */
+    protected function getNotificationTimedEventTypeName(int $timedEventType): string
+    {
+        $types = [
+            0 => 'Departure',
+            1 => 'Arrival'
+        ];
+
+        return $types[$timedEventType] ?? 'Unknown';
+    }
+
+    /**
+     * Get notification channel type name
+     * 
+     * @param string $channelCode Channel type code
+     * @return string Channel type description
+     */
+    protected function getNotificationChannelTypeName(string $channelCode): string
+    {
+        $channels = [
+            'SMS' => 'SMS Text Message',
+            'EMAIL' => 'Email',
+            'PUSH' => 'Push Notification',
+            'VOICE' => 'Voice Call'
+        ];
+
+        return $channels[strtoupper($channelCode)] ?? $channelCode;
+    }
+
+    // =================================================================
+    // GENERAL HELPER METHODS
+    // =================================================================
+
+    /**
+     * Build notification event data
+     * Helper to construct notification event data structure
+     * 
+     * @param int $eventType Event type (0-4)
+     * @param bool $isEnabled Whether event is enabled
+     * @return array Notification event data
+     */
+    protected function buildNotificationEventData(int $eventType, bool $isEnabled): array
+    {
+        $this->validateNotificationEventType($eventType);
+
+        return [
+            'eventType' => $eventType,
+            'isEnabled' => $isEnabled
+        ];
+    }
+
+    /**
+     * Build notification timed event data
+     * Helper to construct notification timed event data structure
+     * 
+     * @param int $hoursBeforeEvent Hours before event to send notification
+     * @param bool $isEnabled Whether timed event is enabled
+     * @return array Notification timed event data
+     */
+    protected function buildNotificationTimedEventData(int $hoursBeforeEvent, bool $isEnabled): array
+    {
+        if ($hoursBeforeEvent < 1 || $hoursBeforeEvent > 168) { // Max 1 week (168 hours)
+            throw new JamboJetValidationException('Hours before event must be between 1 and 168 (1 week)');
+        }
+
+        return [
+            'hoursBeforeEvent' => $hoursBeforeEvent,
+            'isEnabled' => $isEnabled
+        ];
+    }
+
+    /**
+     * Parse SSR code to extract basic information
+     * Helper to parse common SSR codes
+     * 
+     * @param string $ssrCode SSR code
+     * @return array SSR information (type, category, description)
+     */
+    protected function parseSsrCode(string $ssrCode): array
+    {
+        $ssrCode = strtoupper($ssrCode);
+
+        $commonSsrs = [
+            // Wheelchair services
+            'WCHR' => ['type' => 'Assistance', 'category' => 'Wheelchair', 'description' => 'Wheelchair - can walk up/down stairs'],
+            'WCHS' => ['type' => 'Assistance', 'category' => 'Wheelchair', 'description' => 'Wheelchair - cannot walk up/down stairs'],
+            'WCHC' => ['type' => 'Assistance', 'category' => 'Wheelchair', 'description' => 'Wheelchair - completely immobile'],
+
+            // Pet services
+            'PETC' => ['type' => 'Pet', 'category' => 'Cabin', 'description' => 'Pet in cabin'],
+            'AVIH' => ['type' => 'Pet', 'category' => 'Hold', 'description' => 'Pet in hold'],
+
+            // Meals
+            'VGML' => ['type' => 'Meal', 'category' => 'Special', 'description' => 'Vegetarian meal'],
+            'HNML' => ['type' => 'Meal', 'category' => 'Special', 'description' => 'Hindu meal'],
+            'KSML' => ['type' => 'Meal', 'category' => 'Special', 'description' => 'Kosher meal'],
+            'MOML' => ['type' => 'Meal', 'category' => 'Special', 'description' => 'Muslim meal'],
+
+            // Unaccompanied minor
+            'UMNR' => ['type' => 'Service', 'category' => 'Minor', 'description' => 'Unaccompanied minor'],
+
+            // Medical
+            'MEDA' => ['type' => 'Medical', 'category' => 'Assistance', 'description' => 'Medical case'],
+            'OXYG' => ['type' => 'Medical', 'category' => 'Equipment', 'description' => 'Oxygen'],
+        ];
+
+        return $commonSsrs[$ssrCode] ?? [
+            'type' => 'Unknown',
+            'category' => 'Other',
+            'description' => $ssrCode
+        ];
+    }
+
+    /**
+     * Validate travel document data
+     * 
+     * @param array $documentData Travel document data
+     * @throws JamboJetValidationException
+     */
+    protected function validateTravelDocumentData(array $documentData): void
+    {
+        // Required fields
+        $required = ['documentTypeCode'];
+        $this->validateRequiredFields($documentData, $required);
+
+        // Validate document type code (P=Passport, V=Visa, I=ID, etc.)
+        if (isset($documentData['documentTypeCode'])) {
+            if (strlen($documentData['documentTypeCode']) > 4) {
+                throw new JamboJetValidationException('Document type code must not exceed 4 characters');
+            }
+        }
+
+        // Validate issued by code (country code)
+        if (isset($documentData['issuedByCode'])) {
+            if (strlen($documentData['issuedByCode']) > 3) {
+                throw new JamboJetValidationException('Issued by code must not exceed 3 characters');
+            }
+        }
+
+        // Validate document number
+        if (isset($documentData['documentNumber'])) {
+            if (strlen($documentData['documentNumber']) > 35) {
+                throw new JamboJetValidationException('Document number must not exceed 35 characters');
+            }
+        }
+
+        // Validate birth country
+        if (isset($documentData['birthCountry'])) {
+            if (strlen($documentData['birthCountry']) !== 2) {
+                throw new JamboJetValidationException('Birth country must be 2 characters (ISO 3166-1 alpha-2)');
+            }
+        }
+
+        // Validate nationality
+        if (isset($documentData['nationality'])) {
+            if (strlen($documentData['nationality']) !== 2) {
+                throw new JamboJetValidationException('Nationality must be 2 characters (ISO 3166-1 alpha-2)');
+            }
+        }
+
+        // Validate expiration date
+        if (isset($documentData['expirationDate'])) {
+            if (!$this->isValidDate($documentData['expirationDate'])) {
+                throw new JamboJetValidationException('Invalid expiration date format. Use ISO 8601 format');
+            }
+
+            // Check if document is not expired
+            $expirationDate = new \DateTime($documentData['expirationDate']);
+            $today = new \DateTime();
+            if ($expirationDate < $today) {
+                throw new JamboJetValidationException('Travel document has expired');
+            }
+        }
+
+        // Validate issue date
+        if (isset($documentData['issueDate'])) {
+            if (!$this->isValidDate($documentData['issueDate'])) {
+                throw new JamboJetValidationException('Invalid issue date format. Use ISO 8601 format');
+            }
+
+            // Issue date cannot be in the future
+            $issueDate = new \DateTime($documentData['issueDate']);
+            $today = new \DateTime();
+            if ($issueDate > $today) {
+                throw new JamboJetValidationException('Issue date cannot be in the future');
+            }
+        }
+
+        // Validate gender
+        if (isset($documentData['gender'])) {
+            if (!in_array($documentData['gender'], [0, 1, 2])) { // 0=XX, 1=Male, 2=Female
+                throw new JamboJetValidationException('Gender must be 0 (XX), 1 (Male), or 2 (Female)');
+            }
+        }
+    }
+
+    // =================================================================
+    // INFANT VALIDATION
+    // =================================================================
+
+    /**
+     * Validate infant data
+     * 
+     * @param array $infantData Infant data
+     * @throws JamboJetValidationException
+     */
+    protected function validateInfantData(array $infantData): void
+    {
+        // Validate name if provided
+        if (isset($infantData['name'])) {
+            $this->validatePassengerName($infantData['name']);
+        }
+
+        // Validate date of birth
+        if (isset($infantData['dateOfBirth'])) {
+            if (!$this->isValidDate($infantData['dateOfBirth'])) {
+                throw new JamboJetValidationException('Invalid date of birth format. Use ISO 8601 format');
+            }
+
+            // Infant must be under 2 years old
+            $dob = new \DateTime($infantData['dateOfBirth']);
+            $today = new \DateTime();
+            $age = $today->diff($dob);
+
+            if ($age->y >= 2) {
+                throw new JamboJetValidationException('Infant must be under 2 years old');
+            }
+        }
+
+        // Validate gender
+        if (isset($infantData['gender'])) {
+            if (!in_array($infantData['gender'], [0, 1, 2])) {
+                throw new JamboJetValidationException('Gender must be 0 (XX), 1 (Male), or 2 (Female)');
+            }
+        }
+
+        // Validate nationality
+        if (isset($infantData['nationality'])) {
+            if (strlen($infantData['nationality']) !== 2) {
+                throw new JamboJetValidationException('Nationality must be 2 characters (ISO 3166-1 alpha-2)');
+            }
+        }
+
+        // Validate resident country
+        if (isset($infantData['residentCountry'])) {
+            if (strlen($infantData['residentCountry']) !== 2) {
+                throw new JamboJetValidationException('Resident country must be 2 characters (ISO 3166-1 alpha-2)');
+            }
+        }
+    }
+
+    // =================================================================
+    // LOYALTY VALIDATION
+    // =================================================================
+
+    /**
+     * Validate loyalty data
+     * 
+     * @param array $loyaltyData Loyalty program data
+     * @throws JamboJetValidationException
+     */
+    protected function validateLoyaltyData(array $loyaltyData): void
+    {
+        // Required fields
+        $required = ['programCode', 'programNumber'];
+        $this->validateRequiredFields($loyaltyData, $required);
+
+        // Validate program code
+        if (isset($loyaltyData['programCode'])) {
+            if (strlen($loyaltyData['programCode']) > 10) {
+                throw new JamboJetValidationException('Program code must not exceed 10 characters');
+            }
+        }
+
+        // Validate program number (membership number)
+        if (isset($loyaltyData['programNumber'])) {
+            if (strlen($loyaltyData['programNumber']) > 25) {
+                throw new JamboJetValidationException('Program number must not exceed 25 characters');
+            }
+        }
+
+        // Validate level code if provided
+        if (isset($loyaltyData['levelCode'])) {
+            if (strlen($loyaltyData['levelCode']) > 10) {
+                throw new JamboJetValidationException('Level code must not exceed 10 characters');
+            }
+        }
+    }
+
+// =================================================================
+// FEE VALIDATION
+// =================================================================
+
+    /**
+     * Validate fee data
+     * 
+     * @param array $feeData Fee data
+     * @throws JamboJetValidationException
+     */
+    protected function validateFeeData(array $feeData): void
+    {
+        // Required fields
+        $required = ['code'];
+        $this->validateRequiredFields($feeData, $required);
+
+        // Validate fee code
+        if (isset($feeData['code'])) {
+            if (strlen($feeData['code']) > 10) {
+                throw new JamboJetValidationException('Fee code must not exceed 10 characters');
+            }
+        }
+
+        // Validate type if provided
+        if (isset($feeData['type'])) {
+            // Fee types: 0=ServiceCharge, 1=Tax, 2=Discount, etc.
+            if (!is_int($feeData['type']) || $feeData['type'] < 0 || $feeData['type'] > 10) {
+                throw new JamboJetValidationException('Invalid fee type');
+            }
+        }
+
+        // Validate note if provided
+        if (isset($feeData['note']) && strlen($feeData['note']) > 255) {
+            throw new JamboJetValidationException('Fee note must not exceed 255 characters');
+        }
+
+        // Validate override flag
+        if (isset($feeData['override']) && !is_bool($feeData['override'])) {
+            throw new JamboJetValidationException('Override must be a boolean');
+        }
+
+        // Validate service charges if provided
+        if (isset($feeData['serviceCharges'])) {
+            if (!is_array($feeData['serviceCharges'])) {
+                throw new JamboJetValidationException('Service charges must be an array');
+            }
+
+            foreach ($feeData['serviceCharges'] as $charge) {
+                $this->validateServiceCharge($charge);
+            }
+        }
+    }
+
+    /**
+     * Validate service charge
+     * 
+     * @param array $charge Service charge data
+     * @throws JamboJetValidationException
+     */
+    protected function validateServiceCharge(array $charge): void
+    {
+        // Required fields
+        $required = ['code', 'amount'];
+        $this->validateRequiredFields($charge, $required);
+
+        // Validate amount
+        if (isset($charge['amount'])) {
+            if (!is_numeric($charge['amount'])) {
+                throw new JamboJetValidationException('Service charge amount must be numeric');
+            }
+        }
+
+        // Validate currency code
+        if (isset($charge['currencyCode'])) {
+            if (strlen($charge['currencyCode']) !== 3) {
+                throw new JamboJetValidationException('Currency code must be 3 characters (ISO 4217)');
+            }
+        }
+    }
+
+    // =================================================================
+    // GROUP BOOKING VALIDATION
+    // =================================================================
+
+    /**
+     * Validate group booking data
+     * 
+     * @param array $groupData Group booking data
+     * @throws JamboJetValidationException
+     */
+    protected function validateGroupBookingData(array $groupData): void
+    {
+        // Required fields
+        $required = ['passengers'];
+        $this->validateRequiredFields($groupData, $required);
+
+        // Validate passengers array
+        if (!is_array($groupData['passengers'])) {
+            throw new JamboJetValidationException('Passengers must be an array');
+        }
+
+        if (empty($groupData['passengers'])) {
+            throw new JamboJetValidationException('Group booking must have at least one passenger');
+        }
+
+        // Group bookings typically have 10+ passengers
+        if (count($groupData['passengers']) < 10) {
+            throw new JamboJetValidationException('Group bookings require at least 10 passengers');
+        }
+
+        if (count($groupData['passengers']) > 999) {
+            throw new JamboJetValidationException('Group bookings cannot exceed 999 passengers');
+        }
+
+        // Validate each passenger in group
+        foreach ($groupData['passengers'] as $index => $passenger) {
+            if (!is_array($passenger)) {
+                throw new JamboJetValidationException("Passenger at index {$index} must be an array");
+            }
+
+            // For TBA passengers, minimal validation
+            if (!isset($passenger['name']) || empty($passenger['name'])) {
+                // TBA passenger - check required fields
+                if (!isset($passenger['passengerTypeCode'])) {
+                    throw new JamboJetValidationException("TBA passenger at index {$index} must have passengerTypeCode");
+                }
+            } else {
+                // Named passenger - full validation
+                $this->validatePassengerData($passenger);
+            }
+        }
+    }
+
+    // =================================================================
+    // HELPER METHODS
+    // =================================================================
+
+    /**
+     * Validate fee key
+     * 
+     * @param string $feeKey Fee key
+     * @throws JamboJetValidationException
+     */
+    protected function validateFeeKey(string $feeKey): void
+    {
+        if (empty($feeKey)) {
+            throw new JamboJetValidationException('Fee key is required');
+        }
+
+        if (strlen($feeKey) > 100) {
+            throw new JamboJetValidationException('Fee key must not exceed 100 characters');
+        }
+    }
+
+    /**
+     * Validate passenger type code request
+     * 
+     * @param array $request Type code request data
+     * @throws JamboJetValidationException
+     */
+    protected function validatePassengerTypeCodeRequest(array $request): void
+    {
+        $required = ['passengerTypeCode'];
+        $this->validateRequiredFields($request, $required);
+
+        // Validate passenger type code format
+        if (isset($request['passengerTypeCode'])) {
+            $validTypes = ['ADT', 'CHD', 'INF', 'SRC', 'STD', 'YTH', 'MIL'];
+            if (!in_array($request['passengerTypeCode'], $validTypes)) {
+                throw new JamboJetValidationException(
+                    "Invalid passenger type code. Must be one of: " . implode(', ', $validTypes)
+                );
+            }
+        }
+
+        // Validate optional sync gender flag
+        if (
+            isset($request['syncPassengerAndTravelDocGender']) &&
+            !is_bool($request['syncPassengerAndTravelDocGender'])
+        ) {
+            throw new JamboJetValidationException('syncPassengerAndTravelDocGender must be a boolean');
+        }
+    }
+
+    // =================================================================
+    // ADDRESS VALIDATION HELPERS
+    // =================================================================
+
+    /**
+     * Validate address key
+     * 
+     * @param string $addressKey Address key
+     * @throws JamboJetValidationException
+     */
+    protected function validateAddressKey(string $addressKey): void
+    {
+        if (empty($addressKey)) {
+            throw new JamboJetValidationException('Address key is required');
+        }
+
+        if (strlen($addressKey) > 100) {
+            throw new JamboJetValidationException('Address key must not exceed 100 characters');
+        }
+    }
+
+    /**
+     * Validate address data
+     * 
+     * @param array $addressData Address data
+     * @throws JamboJetValidationException
+     */
+    protected function validateAddressData(array $addressData): void
+    {
+        // Required fields for address
+        $required = ['addressTypeCode'];
+        $this->validateRequiredFields($addressData, $required);
+
+        // Validate address type code
+        if (isset($addressData['addressTypeCode'])) {
+            $validTypes = ['H', 'B', 'M', 'O']; // Home, Business, Mailing, Other
+            if (!in_array($addressData['addressTypeCode'], $validTypes)) {
+                throw new JamboJetValidationException(
+                    "Invalid address type code. Must be one of: " . implode(', ', $validTypes)
+                );
+            }
+        }
+
+        // Validate country code (if provided)
+        if (isset($addressData['countryCode'])) {
+            if (strlen($addressData['countryCode']) !== 2) {
+                throw new JamboJetValidationException('Country code must be 2 characters (ISO 3166-1 alpha-2)');
+            }
+            $addressData['countryCode'] = strtoupper($addressData['countryCode']);
+        }
+
+        // Validate line lengths
+        if (isset($addressData['lineOne']) && strlen($addressData['lineOne']) > 32) {
+            throw new JamboJetValidationException('Address line one must not exceed 32 characters');
+        }
+
+        if (isset($addressData['lineTwo']) && strlen($addressData['lineTwo']) > 32) {
+            throw new JamboJetValidationException('Address line two must not exceed 32 characters');
+        }
+
+        if (isset($addressData['lineThree']) && strlen($addressData['lineThree']) > 32) {
+            throw new JamboJetValidationException('Address line three must not exceed 32 characters');
+        }
+
+        // Validate city
+        if (isset($addressData['city']) && strlen($addressData['city']) > 32) {
+            throw new JamboJetValidationException('City must not exceed 32 characters');
+        }
+
+        // Validate province/state
+        if (isset($addressData['provinceState']) && strlen($addressData['provinceState']) > 3) {
+            throw new JamboJetValidationException('Province/state must not exceed 3 characters');
+        }
+
+        // Validate postal code
+        if (isset($addressData['postalCode']) && strlen($addressData['postalCode']) > 10) {
+            throw new JamboJetValidationException('Postal code must not exceed 10 characters');
+        }
+    }
+
+    // =================================================================
+    // DOCUMENT VALIDATION HELPERS
+    // =================================================================
+
+    /**
+     * Validate document key
+     * 
+     * @param string $documentKey Document key
+     * @throws JamboJetValidationException
+     */
+    protected function validateDocumentKey(string $documentKey): void
+    {
+        if (empty($documentKey)) {
+            throw new JamboJetValidationException('Document key is required');
+        }
+
+        if (strlen($documentKey) > 100) {
+            throw new JamboJetValidationException('Document key must not exceed 100 characters');
+        }
+    }
+
+    // =================================================================
+    // GENERAL PASSENGER VALIDATION (Enhanced)
+    // =================================================================
+
+    /**
+     * Validate passengers data (batch)
+     * 
+     * @param array $passengers Array of passenger data
+     * @throws JamboJetValidationException
+     */
+    protected function validatePassengersData(array $passengers): void
+    {
+        if (empty($passengers)) {
+            throw new JamboJetValidationException('Passengers array cannot be empty');
+        }
+
+        if (count($passengers) > 99) {
+            throw new JamboJetValidationException('Cannot add more than 99 passengers at once');
+        }
+
+        foreach ($passengers as $index => $passenger) {
+            if (!is_array($passenger)) {
+                throw new JamboJetValidationException("Passenger at index {$index} must be an array");
+            }
+
+            $this->validatePassengerData($passenger);
+        }
+    }
+
+    /**
+     * Validate single passenger data
+     * 
+     * @param array $passengerData Passenger data
+     * @throws JamboJetValidationException
+     */
+    protected function validatePassengerData(array $passengerData): void
+    {
+        // Required fields for passenger
+        $required = ['passengerTypeCode'];
+        $this->validateRequiredFields($passengerData, $required);
+
+        // Validate passenger type code
+        if (isset($passengerData['passengerTypeCode'])) {
+            $validTypes = ['ADT', 'CHD', 'INF', 'SRC', 'STD', 'YTH', 'MIL'];
+            if (!in_array($passengerData['passengerTypeCode'], $validTypes)) {
+                throw new JamboJetValidationException(
+                    "Invalid passenger type code. Must be one of: " . implode(', ', $validTypes)
+                );
+            }
+        }
+
+        // Validate name if provided
+        if (isset($passengerData['name'])) {
+            $this->validatePassengerName($passengerData['name']);
+        }
+
+        // Validate customer number if provided
+        if (isset($passengerData['customerNumber']) && strlen($passengerData['customerNumber']) > 20) {
+            throw new JamboJetValidationException('Customer number must not exceed 20 characters');
+        }
+
+        // Validate discount code if provided
+        if (isset($passengerData['discountCode']) && strlen($passengerData['discountCode']) > 8) {
+            throw new JamboJetValidationException('Discount code must not exceed 8 characters');
+        }
+
+        // Validate gender if provided
+        if (isset($passengerData['gender'])) {
+            if (!in_array($passengerData['gender'], [0, 1, 2])) { // 0=XX, 1=Male, 2=Female
+                throw new JamboJetValidationException('Gender must be 0 (XX), 1 (Male), or 2 (Female)');
+            }
+        }
+
+        // Validate date of birth if provided
+        if (isset($passengerData['dateOfBirth'])) {
+            if (!$this->isValidDate($passengerData['dateOfBirth'])) {
+                throw new JamboJetValidationException('Invalid date of birth format. Use ISO 8601 format');
+            }
+        }
+    }
+
+    /**
+     * Validate passenger name
+     * 
+     * @param array $name Name data
+     * @throws JamboJetValidationException
+     */
+    protected function validatePassengerName(array $name): void
+    {
+        // Validate first name
+        if (isset($name['first'])) {
+            if (empty($name['first'])) {
+                throw new JamboJetValidationException('First name cannot be empty');
+            }
+            if (strlen($name['first']) > 32) {
+                throw new JamboJetValidationException('First name must not exceed 32 characters');
+            }
+        }
+
+        // Validate last name
+        if (isset($name['last'])) {
+            if (empty($name['last'])) {
+                throw new JamboJetValidationException('Last name cannot be empty');
+            }
+            if (strlen($name['last']) > 32) {
+                throw new JamboJetValidationException('Last name must not exceed 32 characters');
+            }
+        }
+
+        // Validate middle name if provided
+        if (isset($name['middle']) && strlen($name['middle']) > 32) {
+            throw new JamboJetValidationException('Middle name must not exceed 32 characters');
+        }
+
+        // Validate title if provided
+        if (isset($name['title']) && strlen($name['title']) > 10) {
+            throw new JamboJetValidationException('Title must not exceed 10 characters');
+        }
+
+        // Validate suffix if provided
+        if (isset($name['suffix']) && strlen($name['suffix']) > 10) {
+            throw new JamboJetValidationException('Suffix must not exceed 10 characters');
+        }
+    }
+
+    /**
+     * Check if date string is valid ISO 8601 format
+     * 
+     * @param string $date Date string
+     * @return bool
+     */
+    protected function isValidDate(string $date): bool
+    {
+        try {
+            $dt = new \DateTime($date);
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Validate required fields are present in request
+     * 
+     * @param array $data Request data
+     * @param array $required Required field names
+     * @throws JamboJetValidationException
+     */
+    protected function validateRequiredFields(array $data, array $required): void
+    {
+        foreach ($required as $field) {
+            if (!isset($data[$field]) || $data[$field] === '') {
+                throw new JamboJetValidationException("Required field '{$field}' is missing");
+            }
+        }
+    }
 
     private function validateBaggageKey(string $key): void
     {
@@ -4124,13 +8536,6 @@ class BookingService implements BookingInterface
 
         if (empty($request['passengerKeys'])) {
             throw new JamboJetValidationException('At least one passenger key is required for check-in', 400);
-        }
-    }
-
-    private function validateAncillaryData(array $data): void
-    {
-        if (!isset($data['ancillaryCode'])) {
-            throw new JamboJetValidationException('Ancillary code is required', 400);
         }
     }
 
@@ -4308,16 +8713,6 @@ class BookingService implements BookingInterface
     }
 
     /**
-     * Validate fee key
-     */
-    private function validateFeeKey(string $key): void
-    {
-        if (empty(trim($key))) {
-            throw new JamboJetValidationException('Fee key is required', 400);
-        }
-    }
-
-    /**
      * Validate SSR key
      */
     private function validateSsrKey(string $key): void
@@ -4337,29 +8732,6 @@ class BookingService implements BookingInterface
         }
     }
 
-    /**
-     * Validate document key
-     */
-    private function validateDocumentKey(string $key): void
-    {
-        if (empty(trim($key))) {
-            throw new JamboJetValidationException('Document key is required', 400);
-        }
-    }
-
-    /**
-     * Validate travel document data
-     */
-    private function validateTravelDocumentData(array $data): void
-    {
-        if (!isset($data['documentTypeCode'])) {
-            throw new JamboJetValidationException('Document type code is required', 400);
-        }
-
-        if (!isset($data['issuedByCode'])) {
-            throw new JamboJetValidationException('Issued by code is required', 400);
-        }
-    }
 
     /**
      * Validate history criteria
@@ -4392,42 +8764,6 @@ class BookingService implements BookingInterface
     }
 
     /**
-     * Validate infant data
-     */
-    private function validateInfantData(array $data): void
-    {
-        if (!isset($data['name'])) {
-            throw new JamboJetValidationException('Infant name is required', 400);
-        }
-
-        if (!isset($data['name']['first']) || empty($data['name']['first'])) {
-            throw new JamboJetValidationException('Infant first name is required', 400);
-        }
-
-        if (!isset($data['name']['last']) || empty($data['name']['last'])) {
-            throw new JamboJetValidationException('Infant last name is required', 400);
-        }
-
-        if (isset($data['dateOfBirth'])) {
-            $this->validateFormats(['dob' => $data['dateOfBirth']], ['dob' => 'datetime']);
-        }
-    }
-
-    /**
-     * Validate fee data
-     */
-    private function validateFeeData(array $data): void
-    {
-        if (!isset($data['code'])) {
-            throw new JamboJetValidationException('Fee code is required', 400);
-        }
-
-        if (isset($data['amount']) && !is_numeric($data['amount'])) {
-            throw new JamboJetValidationException('Fee amount must be numeric', 400);
-        }
-    }
-
-    /**
      * Validate SSR request
      */
     private function validateSsrRequest(array $request): void
@@ -4452,20 +8788,6 @@ class BookingService implements BookingInterface
 
         if (empty($request['feeKeys'])) {
             throw new JamboJetValidationException('At least one fee key is required', 400);
-        }
-    }
-
-    /**
-     * Validate loyalty data
-     */
-    private function validateLoyaltyData(array $data): void
-    {
-        if (!isset($data['programCode'])) {
-            throw new JamboJetValidationException('Loyalty program code is required', 400);
-        }
-
-        if (!isset($data['programNumber'])) {
-            throw new JamboJetValidationException('Loyalty program number is required', 400);
         }
     }
 
@@ -4616,27 +8938,6 @@ class BookingService implements BookingInterface
         }
     }
 
-    /**
-     * Validate passenger data
-     */
-    private function validatePassengerData(array $data): void
-    {
-        if (!isset($data['name'])) {
-            throw new JamboJetValidationException('Passenger name is required', 400);
-        }
-
-        if (!isset($data['name']['first']) || empty($data['name']['first'])) {
-            throw new JamboJetValidationException('Passenger first name is required', 400);
-        }
-
-        if (!isset($data['name']['last']) || empty($data['name']['last'])) {
-            throw new JamboJetValidationException('Passenger last name is required', 400);
-        }
-
-        if (!isset($data['passengerTypeCode'])) {
-            throw new JamboJetValidationException('Passenger type code is required', 400);
-        }
-    }
 
     /**
      * Validate resell SSR request
@@ -4856,6 +9157,158 @@ class BookingService implements BookingInterface
                     400
                 );
             }
+        }
+    }
+
+    /**
+     * Validate hold data
+     */
+    private function validateHoldData(array $holdData): void
+    {
+        // Validate required hold date
+        $this->validateRequired($holdData, ['holdDate']);
+
+        // Validate hold date format
+        $this->validateDateFormat($holdData['holdDate'], 'Hold date');
+
+        // Validate hold date is in future
+        $holdDate = new \DateTime($holdData['holdDate']);
+        $now = new \DateTime();
+
+        if ($holdDate <= $now) {
+            throw new JamboJetValidationException(
+                'Hold date must be in the future'
+            );
+        }
+
+        // Validate optional fields
+        if (isset($holdData['reason'])) {
+            $this->validateLength($holdData['reason'], 1, 255, 'Hold reason');
+        }
+
+        if (isset($holdData['comment'])) {
+            $this->validateLength($holdData['comment'], 1, 1000, 'Hold comment');
+        }
+    }
+
+    /**
+     * Validate account status data
+     */
+    private function validateAccountStatusData(array $statusData): void
+    {
+        // Validate required status
+        $this->validateRequired($statusData, ['status']);
+
+        // Validate status is valid (0-3)
+        $validStatuses = [0, 1, 2, 3];
+        if (!in_array($statusData['status'], $validStatuses)) {
+            throw new JamboJetValidationException(
+                'Account status must be 0 (Active), 1 (Suspended), 2 (Closed), or 3 (Pending)'
+            );
+        }
+
+        // Validate optional reason
+        if (isset($statusData['reason'])) {
+            $this->validateLength($statusData['reason'], 1, 500, 'Status reason');
+        }
+
+        // Validate optional effective date
+        if (isset($statusData['effectiveDate'])) {
+            $this->validateDateFormat($statusData['effectiveDate'], 'Effective date');
+        }
+    }
+
+    /**
+     * Validate transaction query parameters
+     */
+    private function validateTransactionParams(array $params): void
+    {
+        // Validate dates if provided
+        if (isset($params['startDate'])) {
+            $this->validateDateFormat($params['startDate'], 'Start date');
+        }
+
+        if (isset($params['endDate'])) {
+            $this->validateDateFormat($params['endDate'], 'End date');
+        }
+
+        // Validate date range
+        if (isset($params['startDate']) && isset($params['endDate'])) {
+            $startDate = new \DateTime($params['startDate']);
+            $endDate = new \DateTime($params['endDate']);
+
+            if ($endDate < $startDate) {
+                throw new JamboJetValidationException(
+                    'End date must be after start date'
+                );
+            }
+        }
+
+        // Validate transaction type if provided
+        if (isset($params['transactionType'])) {
+            $validTypes = [0, 1, 2, 3, 4, 5]; // Default, Payment, Adjustment, Supplementary, Transfer, Spoilage
+            if (!in_array((int)$params['transactionType'], $validTypes)) {
+                throw new JamboJetValidationException(
+                    'Transaction type must be between 0 and 5'
+                );
+            }
+        }
+
+        // Validate pagination if provided
+        if (isset($params['pageSize'])) {
+            $this->validatePagination(1, (int)$params['pageSize'], 100);
+        }
+    }
+
+    /**
+     * Validate collection data
+     */
+    private function validateCollectionData(array $collectionData): void
+    {
+        // Validate required amount
+        $this->validateRequired($collectionData, ['amount']);
+        $this->validateAmount((float)$collectionData['amount'], 'Collection amount');
+
+        // Validate required currency code
+        $this->validateRequired($collectionData, ['currencyCode']);
+        $this->validateCurrencyCode($collectionData['currencyCode'], 'Currency code');
+
+        // Validate optional note
+        if (isset($collectionData['note'])) {
+            $this->validateLength($collectionData['note'], 1, 1000, 'Collection note');
+        }
+
+        // Validate optional reference number
+        if (isset($collectionData['referenceNumber'])) {
+            $this->validateLength($collectionData['referenceNumber'], 1, 50, 'Reference number');
+        }
+    }
+
+    /**
+     * Validate cancellation data
+     */
+    private function validateCancellationData(array $cancellationData): void
+    {
+        // Validate required reason
+        $this->validateRequiredFields($cancellationData, ['reason']);
+        $this->validateLength($cancellationData['reason'], 1, 500, 'Cancellation reason');
+
+        // Validate optional cancelled by
+        if (isset($cancellationData['cancelledBy'])) {
+            $this->validateLength($cancellationData['cancelledBy'], 1, 100, 'Cancelled by');
+        }
+
+        // Validate optional boolean flags
+        if (isset($cancellationData['refundToOriginal']) && !is_bool($cancellationData['refundToOriginal'])) {
+            throw new JamboJetValidationException('refundToOriginal must be a boolean');
+        }
+
+        if (isset($cancellationData['waiveFees']) && !is_bool($cancellationData['waiveFees'])) {
+            throw new JamboJetValidationException('waiveFees must be a boolean');
+        }
+
+        if (isset($cancellationData['notifyPassengers']) && !is_bool($cancellationData['notifyPassengers'])) {
+            throw new JamboJetValidationException('notifyPassengers must be a boolean');
         }
     }
 
@@ -6209,74 +10662,6 @@ class BookingService implements BookingInterface
     // =================================================================
     // HELPER VALIDATION METHODS FOR COMPLEX STRUCTURES
     // =================================================================
-
-    /**
-     * Validate passengers data array
-     * 
-     * @param array $passengers Passengers data
-     * @throws JamboJetValidationException
-     */
-    private function validatePassengersData(array $passengers): void
-    {
-        if (empty($passengers)) {
-            throw new JamboJetValidationException(
-                'Passengers data cannot be empty',
-                400
-            );
-        }
-
-        foreach ($passengers as $index => $passenger) {
-            $this->validatePassengerData($passenger);
-        }
-    }
-
-
-    /**
-     * Validate passenger name structure
-     * 
-     * @param array $name Name data
-     * @param string $context Context for error reporting
-     * @throws JamboJetValidationException
-     */
-    private function validatePassengerName(array $name, string $context): void
-    {
-        // First and last names are required
-        $this->validateRequired($name, ['first', 'last']);
-
-        // Validate name lengths (airline restrictions)
-        $nameLengths = [
-            'title' => ['max' => 10],
-            'first' => ['min' => 1, 'max' => 30],
-            'middle' => ['max' => 30],
-            'last' => ['min' => 1, 'max' => 30],
-            'suffix' => ['max' => 10]
-        ];
-
-        foreach ($nameLengths as $field => $limits) {
-            if (isset($name[$field])) {
-                try {
-                    $this->validateStringLengths([$field => $name[$field]], [$field => $limits]);
-                } catch (JamboJetValidationException $e) {
-                    throw new JamboJetValidationException(
-                        "Passenger{$context} name validation failed: {$e->getMessage()}",
-                        400
-                    );
-                }
-            }
-        }
-
-        // Validate name characters (no special characters except hyphens, apostrophes)
-        foreach (['first', 'middle', 'last'] as $nameField) {
-            if (isset($name[$nameField])) {
-                if (!preg_match("/^[a-zA-Z\s\-']+$/", $name[$nameField])) {
-                    throw new JamboJetValidationException(
-                        "Passenger{$context} {$nameField} name contains invalid characters",
-                        400
-                    );
-                }
-            }
-        }
-    }
 
     /**
      * Validate passenger contact information

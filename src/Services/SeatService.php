@@ -236,9 +236,127 @@ class SeatService implements SeatInterface
         }
     }
 
+    /**
+     * Get seat maps for a journey
+     * GET /api/nsk/v4/seatmaps/{journeyKey}
+     * 
+     * Returns seat map information for all legs in the journey including:
+     * - Available seats
+     * - Seat properties
+     * - Pricing information
+     * - Compartment layout
+     */
+    public function getSeatMapsByJourney(
+        string $journeyKey,
+        ?bool $includePropertyLookup = null,
+        ?string $cultureCode = null
+    ): array {
+        $this->validateJourneyKey($journeyKey);
+
+        if ($cultureCode !== null) {
+            $this->validateCultureCode($cultureCode);
+        }
+
+        $params = array_filter([
+            'IncludePropertyLookup' => $includePropertyLookup,
+            'CultureCode' => $cultureCode,
+        ], fn($value) => $value !== null);
+
+        try {
+            return $this->get("api/nsk/v4/seatmaps/{$journeyKey}", $params);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to retrieve seat maps for journey: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get seat map for a specific leg
+     * GET /api/nsk/v1/seatmaps/{legKey}
+     * 
+     * Returns seat map for a single leg including:
+     * - Seat availability
+     * - Seat assignments
+     * - Seat properties and amenities
+     * - Compartment information
+     */
+    public function getSeatMapByLeg(
+        string $legKey,
+        ?bool $includePropertyLookup = null,
+        ?string $cultureCode = null
+    ): array {
+        $this->validateLegKey($legKey);
+
+        if ($cultureCode !== null) {
+            $this->validateCultureCode($cultureCode);
+        }
+
+        $params = array_filter([
+            'IncludePropertyLookup' => $includePropertyLookup,
+            'CultureCode' => $cultureCode,
+        ], fn($value) => $value !== null);
+
+        try {
+            return $this->get("api/nsk/v1/seatmaps/{$legKey}", $params);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to retrieve seat map for leg: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    public function blockSeats(array $unitKeys): array
+    {
+        $this->validateUnitKeys($unitKeys);
+
+        try {
+            return $this->post('api/dcs/v1/seats/block', $unitKeys);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to block seats: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    public function unblockSeats(array $unitKeys): array
+    {
+        $this->validateUnitKeys($unitKeys);
+
+        try {
+            return $this->delete('api/dcs/v1/seats/unblock', [], $unitKeys);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to unblock seats: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+
     // =================================================================
     // CONVENIENCE METHODS
     // =================================================================
+
+    private function validateUnitKeys(array $unitKeys): void
+    {
+        if (empty($unitKeys)) {
+            throw new JamboJetValidationException('At least one unit key is required', 400);
+        }
+
+        foreach ($unitKeys as $key) {
+            if (empty($key)) {
+                throw new JamboJetValidationException('Unit keys cannot be empty', 400);
+            }
+        }
+    }
 
     /**
      * Assign specific seat to passenger
@@ -321,6 +439,51 @@ class SeatService implements SeatInterface
     // =================================================================
     // VALIDATION METHODS - COMPREHENSIVE AND COMPLETE
     // =================================================================
+
+
+    /**
+     * Validate journey key
+     */
+    private function validateJourneyKey(string $journeyKey): void
+    {
+        if (empty($journeyKey)) {
+            throw new JamboJetValidationException('Journey key is required', 400);
+        }
+
+        // Journey keys are typically base64-encoded, minimum length check
+        if (strlen($journeyKey) < 10) {
+            throw new JamboJetValidationException('Invalid journey key format', 400);
+        }
+    }
+
+    /**
+     * Validate leg key
+     */
+    private function validateLegKey(string $legKey): void
+    {
+        if (empty($legKey)) {
+            throw new JamboJetValidationException('Leg key is required', 400);
+        }
+
+        // Leg keys are typically base64-encoded, minimum length check
+        if (strlen($legKey) < 10) {
+            throw new JamboJetValidationException('Invalid leg key format', 400);
+        }
+    }
+
+    /**
+     * Validate culture code format
+     */
+    private function validateCultureCode(string $cultureCode): void
+    {
+        // Culture codes are typically in format: en-US, fr-FR, etc.
+        if (!preg_match('/^[a-z]{2}-[A-Z]{2}$/i', $cultureCode)) {
+            throw new JamboJetValidationException(
+                'Invalid culture code format. Expected format: en-US',
+                400
+            );
+        }
+    }
 
     /**
      * Validate availability criteria

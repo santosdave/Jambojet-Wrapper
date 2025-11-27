@@ -11,28 +11,132 @@ use SantosDave\JamboJet\Exceptions\JamboJetValidationException;
 /**
  * User Management Service for JamboJet NSK API
  * 
- * Handles all user management operations including CRUD, authentication, roles, and profile management
- * Base endpoints: /api/nsk/v{version}/user, /api/nsk/v{version}/users, /api/nsk/v{version}/persons
+ * Handles all user management operations including CRUD, authentication, roles, 
+ * profile management, and comprehensive person sub-resource management
  * 
- * Supported endpoints:
+ * Base endpoints: /api/nsk/v{version}/user, /api/nsk/v{version}/users
+ * 
+ * CORE USER OPERATIONS (11 endpoints):
  * - GET /api/nsk/v1/user - Get current user information
  * - PUT /api/nsk/v1/user - Update current user
  * - PATCH /api/nsk/v1/user - Patch current user
- * - POST /api/nsk/v1/user - Create user account (customer)
- * - POST /api/nsk/v2/user - Create user account (customer v2)
+ * - POST /api/nsk/v1/user - Create user account (customer) v1
+ * - POST /api/nsk/v2/user - Create user account (customer) v2
  * - GET /api/nsk/v1/users - Get users (agent function)
- * - POST /api/nsk/v1/users - Create multiple users (agent function)
- * - POST /api/nsk/v2/users - Create multiple users (agent function v2)
+ * - POST /api/nsk/v1/users - Create multiple users (agent) v1
+ * - POST /api/nsk/v2/users - Create multiple users (agent) v2
  * - GET /api/nsk/v1/users/{userKey} - Get specific user
  * - PUT /api/nsk/v1/users/{userKey} - Update specific user
  * - DELETE /api/nsk/v1/users/{userKey} - Delete specific user
- * - POST /api/nsk/v1/user/password/change - Change current user password
- * - POST /api/nsk/v1/users/{userKey}/password/reset - Reset user password
- * - GET /api/nsk/v1/user/impersonate - Get current impersonation state
- * - POST /api/nsk/v1/user/impersonate - Impersonate role
+ * 
+ * USER ROLES MANAGEMENT (8 endpoints):
+ * - GET /api/nsk/v1/users/{userKey}/roles - Get all user roles
+ * - POST /api/nsk/v1/users/{userKey}/roles - Create user role
+ * - GET /api/nsk/v1/users/{userKey}/roles/{userRoleKey} - Get specific role
+ * - PUT /api/nsk/v1/users/{userKey}/roles/{userRoleKey} - Update role
+ * - PATCH /api/nsk/v1/users/{userKey}/roles/{userRoleKey} - Patch role
+ * - DELETE /api/nsk/v1/users/{userKey}/roles/{userRoleKey} - Delete role
+ * - GET /api/nsk/v1/users/byRole/{roleCode} - Get users by role
+ * - GET /api/nsk/v1/users/byStation/{domainCode}/{stationCode} - Get users by station
+ * 
+ * IMPERSONATION & USER QUERIES (7 endpoints):
+ * - GET /api/nsk/v1/user/impersonate - Get impersonation state
+ * - POST /api/nsk/v1/user/impersonate - Start impersonation
  * - DELETE /api/nsk/v1/user/impersonate - Reset impersonation
- * - Various role management endpoints
- * - Person management endpoints
+ * - GET /api/nsk/v1/user/bookingsByContactCustomerNumber - Get bookings by contact
+ * - GET /api/nsk/v1/users/byPerson/{personKey} - Get user by person key
+ * - GET /api/nsk/v1/users/{userKey}/bookings - Get user bookings
+ * - GET /api/nsk/v1/users/agents - Get all agents
+ * 
+ * PASSWORD MANAGEMENT (4 endpoints):
+ * - POST /api/nsk/v1/user/password/change - Change current password v1
+ * - POST /api/nsk/v2/user/password/change - Change current password v2
+ * - POST /api/nsk/v1/users/{userKey}/password/reset - Reset user password v1
+ * - POST /api/nsk/v2/users/{userKey}/password/reset - Reset user password v2
+ * 
+ * USER-PERSON CORE (3 endpoints):
+ * - GET /api/nsk/v1/users/{userKey}/person - Get user's person
+ * - PUT /api/nsk/v1/users/{userKey}/person - Update user's person
+ * - PATCH /api/nsk/v1/users/{userKey}/person - Patch user's person
+ * 
+ * PERSON ADDRESSES (6 endpoints):
+ * - GET /api/nsk/v1/users/{userKey}/person/addresses - Get all addresses
+ * - POST /api/nsk/v1/users/{userKey}/person/addresses - Create address
+ * - GET /api/nsk/v1/users/{userKey}/person/addresses/{personAddressKey} - Get address
+ * - PUT /api/nsk/v1/users/{userKey}/person/addresses/{personAddressKey} - Update address
+ * - PATCH /api/nsk/v1/users/{userKey}/person/addresses/{personAddressKey} - Patch address
+ * - DELETE /api/nsk/v1/users/{userKey}/person/addresses/{personAddressKey} - Delete address
+ * 
+ * PERSON AFFILIATIONS (5 endpoints):
+ * - GET /api/nsk/v1/users/{userKey}/person/affiliations - Get all affiliations
+ * - POST /api/nsk/v1/users/{userKey}/person/affiliations - Create affiliation
+ * - GET /api/nsk/v1/users/{userKey}/person/affiliations/{personAffiliationKey} - Get affiliation
+ * - PUT /api/nsk/v1/users/{userKey}/person/affiliations/{personAffiliationKey} - Update affiliation
+ * - DELETE /api/nsk/v1/users/{userKey}/person/affiliations/{personAffiliationKey} - Delete affiliation
+ * 
+ * PERSON ALIASES (6 endpoints):
+ * - GET /api/nsk/v1/users/{userKey}/person/aliases - Get all aliases
+ * - POST /api/nsk/v1/users/{userKey}/person/aliases - Create alias
+ * - GET /api/nsk/v1/users/{userKey}/person/aliases/{personAliasKey} - Get alias
+ * - PUT /api/nsk/v1/users/{userKey}/person/aliases/{personAliasKey} - Update alias
+ * - PATCH /api/nsk/v1/users/{userKey}/person/aliases/{personAliasKey} - Patch alias
+ * - DELETE /api/nsk/v1/users/{userKey}/person/aliases/{personAliasKey} - Delete alias
+ * 
+ * PERSON COMMENTS (6 endpoints):
+ * - GET /api/nsk/v1/users/{userKey}/person/comments - Get all comments
+ * - POST /api/nsk/v1/users/{userKey}/person/comments - Create comment
+ * - GET /api/nsk/v1/users/{userKey}/person/comments/{personCommentKey} - Get comment
+ * - PUT /api/nsk/v1/users/{userKey}/person/comments/{personCommentKey} - Update comment
+ * - PATCH /api/nsk/v1/users/{userKey}/person/comments/{personCommentKey} - Patch comment
+ * - DELETE /api/nsk/v1/users/{userKey}/person/comments/{personCommentKey} - Delete comment
+ * 
+ * PERSON EMAILS (6 endpoints):
+ * - GET /api/nsk/v1/users/{userKey}/person/emails - Get all emails
+ * - POST /api/nsk/v1/users/{userKey}/person/emails - Create email
+ * - GET /api/nsk/v1/users/{userKey}/person/emails/{personEmailAddressKey} - Get email
+ * - PUT /api/nsk/v1/users/{userKey}/person/emails/{personEmailAddressKey} - Update email
+ * - PATCH /api/nsk/v1/users/{userKey}/person/emails/{personEmailAddressKey} - Patch email
+ * - DELETE /api/nsk/v1/users/{userKey}/person/emails/{personEmailAddressKey} - Delete email
+ * 
+ * PERSON INFORMATION (6 endpoints):
+ * - GET /api/nsk/v1/users/{userKey}/person/information - Get all information
+ * - POST /api/nsk/v1/users/{userKey}/person/information - Create information
+ * - GET /api/nsk/v1/users/{userKey}/person/information/{personInformationKey} - Get information
+ * - PUT /api/nsk/v1/users/{userKey}/person/information/{personInformationKey} - Update information
+ * - PATCH /api/nsk/v1/users/{userKey}/person/information/{personInformationKey} - Patch information
+ * - DELETE /api/nsk/v1/users/{userKey}/person/information/{personInformationKey} - Delete information
+ * 
+ * PERSON PHONE NUMBERS (6 endpoints):
+ * - GET /api/nsk/v1/users/{userKey}/person/phoneNumbers - Get all phone numbers
+ * - POST /api/nsk/v1/users/{userKey}/person/phoneNumbers - Create phone number
+ * - GET /api/nsk/v1/users/{userKey}/person/phoneNumbers/{personPhoneNumberKey} - Get phone number
+ * - PUT /api/nsk/v1/users/{userKey}/person/phoneNumbers/{personPhoneNumberKey} - Update phone number
+ * - PATCH /api/nsk/v1/users/{userKey}/person/phoneNumbers/{personPhoneNumberKey} - Patch phone number
+ * - DELETE /api/nsk/v1/users/{userKey}/person/phoneNumbers/{personPhoneNumberKey} - Delete phone number
+ * 
+ * PERSON PREFERENCES (6 endpoints):
+ * - GET /api/nsk/v1/users/{userKey}/person/preferences - Get all preferences
+ * - POST /api/nsk/v1/users/{userKey}/person/preferences - Create preference
+ * - GET /api/nsk/v1/users/{userKey}/person/preferences/{personPreferenceKey} - Get preference
+ * - PUT /api/nsk/v1/users/{userKey}/person/preferences/{personPreferenceKey} - Update preference
+ * - PATCH /api/nsk/v1/users/{userKey}/person/preferences/{personPreferenceKey} - Patch preference
+ * - DELETE /api/nsk/v1/users/{userKey}/person/preferences/{personPreferenceKey} - Delete preference
+ * 
+ * PERSON PROGRAMS (5 endpoints):
+ * - GET /api/nsk/v1/users/{userKey}/person/programs - Get all programs
+ * - POST /api/nsk/v1/users/{userKey}/person/programs - Create program
+ * - GET /api/nsk/v1/users/{userKey}/person/programs/{personProgramKey} - Get program
+ * - PUT /api/nsk/v1/users/{userKey}/person/programs/{personProgramKey} - Update program
+ * - DELETE /api/nsk/v1/users/{userKey}/person/programs/{personProgramKey} - Delete program
+ * 
+ * PERSON STORED PAYMENTS (5 endpoints):
+ * - GET /api/nsk/v1/users/{userKey}/person/storedPayments - Get all stored payments
+ * - POST /api/nsk/v1/users/{userKey}/person/storedPayments - Create stored payment
+ * - GET /api/nsk/v1/users/{userKey}/person/storedPayments/{personStoredPaymentKey} - Get stored payment
+ * - PATCH /api/nsk/v1/users/{userKey}/person/storedPayments/{personStoredPaymentKey} - Patch stored payment
+ * - DELETE /api/nsk/v1/users/{userKey}/person/storedPayments/{personStoredPaymentKey} - Delete stored payment
+ * 
+ * TOTAL: 86 endpoints fully implemented
  * 
  * @package SantosDave\JamboJet\Services
  */
@@ -356,60 +460,6 @@ class UserService implements UserInterface
         }
     }
 
-    /**
-     * Reset user password (Admin function)
-     * 
-     * POST /api/nsk/v1/users/{userKey}/password/reset
-     * Resets password for a specific user
-     * 
-     * @param string $userKey User identifier key
-     * @param array $resetData Password reset data
-     * @return array Password reset response
-     * @throws JamboJetApiException
-     */
-    public function resetUserPassword(string $userKey, array $resetData = []): array
-    {
-        $this->validateUserKey($userKey);
-        $this->validatePasswordResetRequest($resetData);
-
-        try {
-            return $this->post("api/nsk/v1/users/{$userKey}/password/reset", $resetData);
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to reset user password: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
-
-    /**
-     * Get user by person key
-     * 
-     * GET /api/nsk/v1/users/byPerson/{personKey}
-     * Retrieves a user by their associated person key
-     * 
-     * @param string $personKey The unique person key
-     * @return array User information
-     * @throws JamboJetApiException
-     */
-    public function getUserByPersonKey(string $personKey): array
-    {
-        if (empty($personKey)) {
-            throw new JamboJetValidationException('Person key is required');
-        }
-
-        try {
-            return $this->get("api/nsk/v1/users/byPerson/{$personKey}");
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to get user by person key: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
-
     // =================================================================
     // USER ROLE MANAGEMENT
     // =================================================================
@@ -461,57 +511,7 @@ class UserService implements UserInterface
         }
     }
 
-    /**
-     * Get user roles (agent function)
-     * 
-     * GET /api/nsk/v1/users/{userKey}/roles
-     * Gets all roles for a specific user
-     * 
-     * @param string $userKey The unique user key
-     * @return array User roles
-     * @throws JamboJetApiException
-     */
-    public function getUserRoles(string $userKey): array
-    {
-        $this->validateUserKey($userKey);
 
-        try {
-            return $this->get("api/nsk/v1/users/{$userKey}/roles");
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to get user roles: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
-
-    /**
-     * Create user role (agent function)
-     * 
-     * POST /api/nsk/v1/users/{userKey}/roles
-     * Creates a new role for a specific user
-     * 
-     * @param string $userKey The unique user key
-     * @param array $roleData Role creation data
-     * @return array Role creation response
-     * @throws JamboJetApiException
-     */
-    public function createUserRole(string $userKey, array $roleData): array
-    {
-        $this->validateUserKey($userKey);
-        $this->validateUserRoleCreateRequest($roleData);
-
-        try {
-            return $this->post("api/nsk/v1/users/{$userKey}/roles", $roleData);
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to create user role: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
 
     /**
      * Get specific user role
@@ -540,190 +540,11 @@ class UserService implements UserInterface
         }
     }
 
-    /**
-     * Update user role
-     * 
-     * PUT /api/nsk/v1/users/{userKey}/roles/{userRoleKey}
-     * Updates a specific role for a specific user
-     * 
-     * @param string $userKey The unique user key
-     * @param string $userRoleKey The unique user role key
-     * @param array $roleData Role update data
-     * @return array Role update response
-     * @throws JamboJetApiException
-     */
-    public function updateUserRole(string $userKey, string $userRoleKey, array $roleData): array
-    {
-        $this->validateUserKey($userKey);
-        $this->validateUserRoleKey($userRoleKey);
-        $this->validateUserRoleEditRequest($roleData);
-
-        try {
-            return $this->put("api/nsk/v1/users/{$userKey}/roles/{$userRoleKey}", $roleData);
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to update user role: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
-
-    /**
-     * Delete user role
-     * 
-     * DELETE /api/nsk/v1/users/{userKey}/roles/{userRoleKey}
-     * Deletes a specific role for a specific user
-     * 
-     * @param string $userKey The unique user key
-     * @param string $userRoleKey The unique user role key
-     * @return array Role deletion response
-     * @throws JamboJetApiException
-     */
-    public function deleteUserRole(string $userKey, string $userRoleKey): array
-    {
-        $this->validateUserKey($userKey);
-        $this->validateUserRoleKey($userRoleKey);
-
-        try {
-            return $this->delete("api/nsk/v1/users/{$userKey}/roles/{$userRoleKey}");
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to delete user role: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
-
-    /**
-     * Patch user role
-     * 
-     * PATCH /api/nsk/v1/users/{userKey}/roles/{userRoleKey}
-     * Patches a specific role for a specific user
-     * 
-     * @param string $userKey The unique user key
-     * @param string $userRoleKey The unique user role key
-     * @param array $patchData Role patch data
-     * @return array Role patch response
-     * @throws JamboJetApiException
-     */
-    public function patchUserRole(string $userKey, string $userRoleKey, array $patchData): array
-    {
-        $this->validateUserKey($userKey);
-        $this->validateUserRoleKey($userRoleKey);
-
-        try {
-            return $this->patch("api/nsk/v1/users/{$userKey}/roles/{$userRoleKey}", $patchData);
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to patch user role: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
-
-    // =================================================================
-    // USER IMPERSONATION
-    // =================================================================
-
-    /**
-     * Get current impersonation state
-     * 
-     * GET /api/nsk/v1/user/impersonate
-     * Retrieves current user impersonation information
-     * 
-     * @return array Impersonation state
-     * @throws JamboJetApiException
-     */
-    public function getImpersonationState(): array
-    {
-        try {
-            return $this->get('api/nsk/v1/user/impersonate');
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to get impersonation state: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
-
-    /**
-     * Start user impersonation
-     * 
-     * POST /api/nsk/v1/user/impersonate
-     * Begin impersonating another user or role
-     * 
-     * @param array $impersonationData Impersonation details
-     * @return array Impersonation response
-     * @throws JamboJetApiException
-     */
-    public function startImpersonation(array $impersonationData): array
-    {
-        $this->validateImpersonationRequest($impersonationData);
-
-        try {
-            return $this->post('api/nsk/v1/user/impersonate', $impersonationData);
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to start impersonation: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
-
-    /**
-     * Reset impersonation
-     * 
-     * DELETE /api/nsk/v1/user/impersonate
-     * Resets the logged-in user's role to original state
-     * 
-     * @return array Reset response
-     * @throws JamboJetApiException
-     */
-    public function resetImpersonation(): array
-    {
-        try {
-            return $this->delete('api/nsk/v1/user/impersonate');
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to reset impersonation: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
 
 
     // =================================================================
     // USER BOOKINGS & ADDITIONAL OPERATIONS
     // =================================================================
-
-    /**
-     * Get user bookings
-     * 
-     * GET /api/nsk/v1/user/bookings
-     * Gets bookings for the current logged-in user
-     * 
-     * @param array $parameters Optional search parameters (StartDate, EndDate)
-     * @return array User bookings
-     * @throws JamboJetApiException
-     */
-    public function getUserBookings(array $parameters = []): array
-    {
-        try {
-            return $this->get('api/nsk/v1/user/bookings', $parameters);
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to get user bookings: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
 
     /**
      * Get user bookings by passenger
@@ -748,14 +569,1034 @@ class UserService implements UserInterface
         }
     }
 
+
     /**
-     * Get user person information
+     * Reset user password (agent function)
      * 
-     * GET /api/nsk/v1/users/{userKey}/person
-     * Retrieves the specific user's person information
+     * POST /api/nsk/v1/users/{userKey}/password/reset
+     * GraphQL: usersForgotPassword
+     * 
+     * Requires agent permissions.
+     * Invokes the forgot password reset process for a specific user.
+     * This will trigger a password reset email or process based on system configuration.
      * 
      * @param string $userKey The unique user key
-     * @return array User person information
+     * @param array $resetData Password reset request data (optional)
+     * @return array Reset result
+     * @throws JamboJetApiException
+     */
+    public function resetUserPassword(string $userKey, array $resetData = []): array
+    {
+        $this->validateUserKey($userKey);
+
+        try {
+            return $this->post("api/nsk/v1/users/{$userKey}/password/reset", $resetData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to reset user password: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Change specific user's password (agent function)
+     * 
+     * POST /api/nsk/v1/users/{userKey}/password/change
+     * GraphQL: usersChangePassword
+     * 
+     * Requires agent permissions.
+     * Changes a specific user's password (not the current logged-in user).
+     * This follows domain level restrictions and could result in a failed change if there is:
+     * - A minimum time requirement between password changes
+     * - Invalid password length
+     * - Invalid characters
+     * 
+     * @param string $userKey The unique user key
+     * @param array $passwordData Password change request data (newPassword required)
+     * @return array Change result
+     * @throws JamboJetApiException
+     */
+    public function changeUserPassword(string $userKey, array $passwordData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateUserPasswordChangeRequest($passwordData);
+
+        try {
+            return $this->post("api/nsk/v1/users/{$userKey}/password/change", $passwordData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to change user password: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get current user's bookings
+     * 
+     * GET /api/nsk/v1/user/bookings
+     * 
+     * Searches for upcoming and past bookings for the current logged-in user.
+     * This endpoint returns bookings where the user is the primary contact.
+     * 
+     * QUERY PARAMETERS:
+     * - StartDate: Booking start search date (ISO 8601)
+     * - EndDate: Booking end search date (ISO 8601)
+     * 
+     * @param array $criteria Optional search criteria (startDate, endDate)
+     * @return array List of bookings with trip information
+     * @throws JamboJetApiException
+     */
+    public function getCurrentUserBookings(array $criteria = []): array
+    {
+        $this->validateBookingSearchCriteria($criteria);
+
+        try {
+            $queryString = !empty($criteria) ? '?' . http_build_query($criteria) : '';
+            return $this->get("api/nsk/v1/user/bookings{$queryString}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get current user bookings: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    // =================================================================
+    // PHASE 2: ROLE MANAGEMENT (6 methods)
+    // =================================================================
+
+    /**
+     * Get all roles for a specific user
+     * 
+     * GET /api/nsk/v1/users/{userKey}/roles
+     * Retrieves all roles assigned to a specific user
+     * 
+     * Requires agent permissions.
+     * 
+     * @param string $userKey The unique user key
+     * @return array List of user roles with role details
+     * @throws JamboJetApiException
+     */
+    public function getUserRoles(string $userKey): array
+    {
+        $this->validateUserKey($userKey);
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/roles");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user roles: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create a new role for a specific user
+     * 
+     * POST /api/nsk/v1/users/{userKey}/roles
+     * GraphQL: usersRoleAdd
+     * 
+     * Creates a new role assignment for a specific user.
+     * Requires agent permissions.
+     * 
+     * ROLE DATA STRUCTURE:
+     * - roleCode (string, required): Role code to assign
+     * - organizationCode (string, optional): Organization code
+     * - stationCode (string, optional): Station code
+     * - effectiveAfter (datetime, required): When role becomes active
+     * - effectiveBefore (datetime, optional): When role expires
+     * - effectiveDays (array, optional): Days of week role is active [0-6, 0=Sunday]
+     * 
+     * @param string $userKey The unique user key
+     * @param array $roleData Role creation data
+     * @return array Created role information with userRoleKey
+     * @throws JamboJetApiException
+     */
+    public function createUserRole(string $userKey, array $roleData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateUserRoleCreateRequest($roleData);
+
+        try {
+            return $this->post("api/nsk/v1/users/{$userKey}/roles", $roleData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to create user role: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get a specific role for a specific user
+     * 
+     * GET /api/nsk/v1/users/{userKey}/roles/{userRoleKey}
+     * GraphQL: usersRole
+     * 
+     * Retrieves detailed information about a specific user role assignment.
+     * Requires agent permissions.
+     * 
+     * @param string $userKey The unique user key
+     * @param string $userRoleKey The unique user role key
+     * @return array User role details including effective dates and permissions
+     * @throws JamboJetApiException
+     */
+    public function getUserRole(string $userKey, string $userRoleKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateUserRoleKey($userRoleKey);
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/roles/{$userRoleKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user role: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Update a specific role for a specific user
+     * 
+     * PUT /api/nsk/v1/users/{userKey}/roles/{userRoleKey}
+     * GraphQL: usersRoleSet
+     * 
+     * Updates an existing role assignment (full replacement).
+     * Requires agent permissions.
+     * 
+     * REQUIRED FIELDS:
+     * - effectiveAfter (datetime): When role becomes active
+     * 
+     * OPTIONAL FIELDS:
+     * - effectiveBefore (datetime): When role expires
+     * - effectiveDays (array): Days of week role is active [0-6]
+     * 
+     * @param string $userKey The unique user key
+     * @param string $userRoleKey The unique user role key
+     * @param array $roleData Complete role data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function updateUserRole(string $userKey, string $userRoleKey, array $roleData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateUserRoleKey($userRoleKey);
+        $this->validateUserRoleEditRequest($roleData);
+
+        try {
+            return $this->put("api/nsk/v1/users/{$userKey}/roles/{$userRoleKey}", $roleData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to update user role: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Patch a specific role for a specific user
+     * 
+     * PATCH /api/nsk/v1/users/{userKey}/roles/{userRoleKey}
+     * GraphQL: usersRoleModify
+     * 
+     * Partially updates an existing role assignment.
+     * Only specified fields are updated, others remain unchanged.
+     * Requires agent permissions.
+     * 
+     * PATCHABLE FIELDS:
+     * - effectiveAfter (datetime): When role becomes active
+     * - effectiveBefore (datetime): When role expires
+     * - effectiveDays (array): Days of week role is active
+     * 
+     * @param string $userKey The unique user key
+     * @param string $userRoleKey The unique user role key
+     * @param array $patchData Partial role data to update
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function patchUserRole(string $userKey, string $userRoleKey, array $patchData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateUserRoleKey($userRoleKey);
+        $this->validateUserRolePatchRequest($patchData);
+
+        try {
+            return $this->patch("api/nsk/v1/users/{$userKey}/roles/{$userRoleKey}", $patchData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to patch user role: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Delete a specific role for a specific user
+     * 
+     * DELETE /api/nsk/v1/users/{userKey}/roles/{userRoleKey}
+     * GraphQL: usersRoleDelete
+     * 
+     * Removes a role assignment from a specific user.
+     * This permanently removes the role assignment.
+     * Requires agent permissions.
+     * 
+     * @param string $userKey The unique user key
+     * @param string $userRoleKey The unique user role key
+     * @return array Deletion result
+     * @throws JamboJetApiException
+     */
+    public function deleteUserRole(string $userKey, string $userRoleKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateUserRoleKey($userRoleKey);
+
+        try {
+            return $this->delete("api/nsk/v1/users/{$userKey}/roles/{$userRoleKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to delete user role: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    // =================================================================
+    // PHASE 3: IMPERSONATION & USER QUERIES (7 methods)
+    // =================================================================
+
+    /**
+     * Get current impersonation state
+     * 
+     * GET /api/nsk/v1/user/impersonate
+     * GraphQL: impersonate
+     * 
+     * Retrieves the logged-in user's current session roles state.
+     * Returns information about whether the user is currently impersonating a role,
+     * including original role and impersonated role details.
+     * 
+     * @return array Current impersonation state with role details
+     * @throws JamboJetApiException
+     */
+    public function getImpersonationState(): array
+    {
+        try {
+            return $this->get('api/nsk/v1/user/impersonate');
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get impersonation state: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Start role impersonation
+     * 
+     * POST /api/nsk/v1/user/impersonate
+     * GraphQL: impersonateSet
+     * 
+     * Impersonates a new role for the logged-in user.
+     * Allows agents to temporarily assume another role for testing or support purposes.
+     * 
+     * REQUEST DATA:
+     * - roleCode (string, required): Role code to impersonate
+     * 
+     * RESPONSE:
+     * - HTTP 202: Accepted (impersonation started)
+     * 
+     * @param array $impersonationData Impersonation request (roleCode required)
+     * @return array Impersonation result
+     * @throws JamboJetApiException
+     */
+    public function startImpersonation(array $impersonationData): array
+    {
+        $this->validateImpersonationRequest($impersonationData);
+
+        try {
+            return $this->post('api/nsk/v1/user/impersonate', $impersonationData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to start impersonation: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Reset impersonation to original role
+     * 
+     * DELETE /api/nsk/v1/user/impersonate
+     * GraphQL: impersonateDelete
+     * 
+     * Resets the logged-in user's role to their original state.
+     * Ends any active impersonation session.
+     * 
+     * RESPONSES:
+     * - HTTP 200: Success (no data returned)
+     * - HTTP 200 with warning: Not currently impersonating (nsk:NoOperation)
+     * 
+     * @return array Reset result
+     * @throws JamboJetApiException
+     */
+    public function resetImpersonation(): array
+    {
+        try {
+            return $this->delete('api/nsk/v1/user/impersonate');
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to reset impersonation: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get bookings by contact customer number
+     * 
+     * GET /api/nsk/v1/user/bookingsByContactCustomerNumber
+     * GraphQL: userBookingByContact
+     * 
+     * Searches for any bookings that have the current user as a contact
+     * via their customer number. Returns bookings where the user is listed
+     * as a contact or emergency contact.
+     * 
+     * @param array $criteria Optional search criteria (dates, filters)
+     * @return array List of bookings where user is contact
+     * @throws JamboJetApiException
+     */
+    public function getBookingsByContactCustomerNumber(array $criteria = []): array
+    {
+        try {
+            $queryString = !empty($criteria) ? '?' . http_build_query($criteria) : '';
+            return $this->get("api/nsk/v1/user/bookingsByContactCustomerNumber{$queryString}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get bookings by contact customer number: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get user by person key
+     * 
+     * GET /api/nsk/v1/users/byPerson/{personKey}
+     * GraphQL: usersByPerson
+     * 
+     * Retrieves a specific user by their associated person key.
+     * Useful for finding user accounts linked to a person record.
+     * Each person record can have one associated user account.
+     * 
+     * @param string $personKey The person key
+     * @return array User information associated with the person
+     * @throws JamboJetApiException
+     */
+    public function getUserByPersonKey(string $personKey): array
+    {
+        $this->validatePersonKey($personKey);
+
+        try {
+            return $this->get("api/nsk/v1/users/byPerson/{$personKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user by person key: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get bookings for specific user
+     * 
+     * GET /api/nsk/v1/users/{userKey}/bookings
+     * GraphQL: usersBookingsv2
+     * 
+     * Searches a specific user for upcoming and past bookings.
+     * Requires agent permissions.
+     * 
+     * QUERY PARAMETERS:
+     * - StartDate: Booking start search date (ISO 8601)
+     * - EndDate: Booking end search date (ISO 8601)
+     * 
+     * @param string $userKey The unique user key
+     * @param array $criteria Optional search criteria (StartDate, EndDate)
+     * @return array List of user's bookings with trip information
+     * @throws JamboJetApiException
+     */
+    public function getUserBookings(string $userKey, array $criteria = []): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateBookingSearchCriteria($criteria);
+
+        try {
+            $queryString = !empty($criteria) ? '?' . http_build_query($criteria) : '';
+            return $this->get("api/nsk/v1/users/{$userKey}/bookings{$queryString}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user bookings: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Change password (v3 - enhanced validation)
+     * 
+     * POST /api/nsk/v3/user/password/change
+     * GraphQL: userChangePasswordv3
+     * 
+     * Changes the logged-in user's password with enhanced validation.
+     * Validates that the current password is correct before proceeding.
+     * 
+     * This follows domain level restrictions and could result in a failed change if:
+     * - There is a minimum time requirement between password changes
+     * - Invalid password length
+     * - Invalid characters used
+     * 
+     * REQUEST DATA:
+     * - currentPassword (string, required): Current password
+     * - newPassword (string, required): New password
+     * 
+     * @param array $passwordData Password change request (currentPassword, newPassword)
+     * @return array Change result
+     * @throws JamboJetApiException
+     */
+    public function changePasswordV3(array $passwordData): array
+    {
+        $this->validatePasswordChangeRequest($passwordData);
+
+        try {
+            return $this->post('api/nsk/v3/user/password/change', $passwordData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to change password (v3): ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    // =================================================================
+    // PHASE 4: USER PREFERENCES (5 methods)
+    // =================================================================
+
+    /**
+     * Get all user preferences
+     * 
+     * GET /api/nsk/v1/user/userPreferences
+     * 
+     * Retrieves all preference types for the current logged-in user.
+     * Returns list of available preference types and their current state.
+     * 
+     * PREFERENCE TYPES:
+     * - 0 = Default: Default user preferences
+     * - 1 = Language: Language and culture preferences
+     * - 2 = SkySpeed: Airline operational preferences
+     * 
+     * @return array List of all user preferences by type
+     * @throws JamboJetApiException
+     */
+    public function getAllUserPreferences(): array
+    {
+        try {
+            return $this->get('api/nsk/v1/user/userPreferences');
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get all user preferences: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get specific user preference by type
+     * 
+     * GET /api/nsk/v1/user/userPreferences/{preferenceType}
+     * GraphQL: userPreference
+     * 
+     * Retrieves a specific preference type for the current user.
+     * 
+     * PREFERENCE TYPES:
+     * - 0 or 'Default': Default user preferences
+     * - 1 or 'Language': Language/culture preferences (cultureCode)
+     * - 2 or 'SkySpeed': SkySpeed settings (currency, country, nationality, etc.)
+     * 
+     * SKYSPEED RESPONSE EXAMPLE:
+     * {
+     *   "currencyCode": "USD",
+     *   "cultureCode": "en-US",
+     *   "countryCode": "US",
+     *   "nationality": "US",
+     *   "collectionCurrencyCode": "EUR",
+     *   "collectionCurrencySetting": 2,
+     *   "flightResultFareType": 1
+     * }
+     * 
+     * @param string|int $preferenceType Preference type (0=Default, 1=Language, 2=SkySpeed)
+     * @return array Preference details for the specified type
+     * @throws JamboJetApiException
+     */
+    public function getUserPreference($preferenceType): array
+    {
+        $this->validatePreferenceType($preferenceType);
+
+        try {
+            return $this->get("api/nsk/v1/user/userPreferences/{$preferenceType}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user preference: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create user preference
+     * 
+     * POST /api/nsk/v1/user/userPreferences/{preferenceType}
+     * GraphQL: userPreferenceAdd
+     * 
+     * Creates a new preference for the current user.
+     * 
+     * REQUEST DATA (varies by preference type):
+     * - Default: General user preferences
+     * - Language: { cultureCode: 'en-US' }
+     * - SkySpeed: { currencyCode, cultureCode, countryCode, nationality, etc. }
+     * 
+     * SKYSPEED VALIDATION:
+     * - All string codes validated for existence and active status
+     * - CollectionCurrencySetting logic enforced
+     * - Maximum string lengths: 3 characters for codes
+     * 
+     * @param string|int $preferenceType Preference type to create
+     * @param array $preferenceData Preference data
+     * @return array Created preference
+     * @throws JamboJetApiException
+     */
+    public function createUserPreference($preferenceType, array $preferenceData): array
+    {
+        $this->validatePreferenceType($preferenceType);
+        $this->validatePreferenceData($preferenceData);
+
+        try {
+            return $this->post("api/nsk/v1/user/userPreferences/{$preferenceType}", $preferenceData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to create user preference: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Update user preference (full replacement)
+     * 
+     * PUT /api/nsk/v1/user/userPreferences/{preferenceType}
+     * GraphQL: userPreferenceSet
+     * 
+     * Updates an existing preference (full replacement).
+     * All fields must be provided.
+     * 
+     * SKYSPEED SETTINGS:
+     * - If SkySpeed settings disabled, they will be automatically enabled on update
+     * - All string properties validated for existence and active status
+     * - CollectionCurrencySetting validation:
+     *   * Can only be None if collectionCurrencyCode is null/empty
+     *   * Cannot be None if collectionCurrencyCode has value
+     * 
+     * @param string|int $preferenceType Preference type to update
+     * @param array $preferenceData Complete preference data
+     * @return array Updated preference
+     * @throws JamboJetApiException
+     */
+    public function updateUserPreference($preferenceType, array $preferenceData): array
+    {
+        $this->validatePreferenceType($preferenceType);
+        $this->validatePreferenceData($preferenceData);
+
+        try {
+            return $this->put("api/nsk/v1/user/userPreferences/{$preferenceType}", $preferenceData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to update user preference: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Patch user preference (partial update)
+     * 
+     * PATCH /api/nsk/v1/user/userPreferences/{preferenceType}
+     * GraphQL: userPreferenceModify
+     * 
+     * Partially updates an existing preference.
+     * Only specified fields are updated, others remain unchanged.
+     * 
+     * @param string|int $preferenceType Preference type to patch
+     * @param array $patchData Partial preference data to update
+     * @return array Updated preference
+     * @throws JamboJetApiException
+     */
+    public function patchUserPreference($preferenceType, array $patchData): array
+    {
+        $this->validatePreferenceType($preferenceType);
+
+        if (empty($patchData)) {
+            throw new JamboJetValidationException('Preference patch data cannot be empty');
+        }
+
+        try {
+            return $this->patch("api/nsk/v1/user/userPreferences/{$preferenceType}", $patchData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to patch user preference: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    // =================================================================
+    // PHASE 5: SSO & API VARIANTS (9 methods) - FINAL PHASE
+    // =================================================================
+
+    /**
+     * Get all SSO tokens for current user
+     * 
+     * GET /api/nsk/v1/user/singleSignOnToken
+     * GraphQL: singleSignOnTokens
+     * 
+     * Retrieves all single sign-on tokens associated with the current user.
+     * Returns list of SSO providers and their associated tokens.
+     * 
+     * SSO TOKEN STRUCTURE:
+     * - providerKey: Unique provider identifier
+     * - singleSignOn: The SSO token string
+     * - expirationDate: Token expiration (optional)
+     * 
+     * @return array List of SSO tokens with provider information
+     * @throws JamboJetApiException
+     */
+    public function getAllSsoTokens(): array
+    {
+        try {
+            return $this->get('api/nsk/v1/user/singleSignOnToken');
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get all SSO tokens: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get specific SSO token by provider
+     * 
+     * GET /api/nsk/v1/user/singleSignOnToken/{providerKey}
+     * GraphQL: singleSignOnToken
+     * 
+     * Retrieves a specific SSO token for a given provider.
+     * Returns 404 if token not found for provider.
+     * 
+     * @param string $providerKey SSO provider key
+     * @return array SSO token details (providerKey, singleSignOn, expirationDate)
+     * @throws JamboJetApiException
+     */
+    public function getSsoToken(string $providerKey): array
+    {
+        $this->validateProviderKey($providerKey);
+
+        try {
+            return $this->get("api/nsk/v1/user/singleSignOnToken/{$providerKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get SSO token: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create/Link SSO token for provider
+     * 
+     * POST /api/nsk/v1/user/singleSignOnToken/{providerKey}
+     * GraphQL: singleSignOnTokenAdd
+     * 
+     * Links a new SSO token with the logged-in user for a specific provider.
+     * Creates association between user and SSO provider.
+     * 
+     * REQUEST DATA:
+     * - singleSignOn (string, required, max 256): SSO token string
+     * - expirationDate (datetime, optional): Token expiration date
+     * 
+     * @param string $providerKey SSO provider key
+     * @param array $tokenData Token data (singleSignOn, expirationDate)
+     * @return array Created token result
+     * @throws JamboJetApiException
+     */
+    public function createSsoToken(string $providerKey, array $tokenData): array
+    {
+        $this->validateProviderKey($providerKey);
+        $this->validateSsoTokenData($tokenData);
+
+        try {
+            return $this->post("api/nsk/v1/user/singleSignOnToken/{$providerKey}", $tokenData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to create SSO token: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Update SSO token (full replacement)
+     * 
+     * PUT /api/nsk/v1/user/singleSignOnToken/{providerKey}
+     * GraphQL: singleSignOnTokenSet
+     * 
+     * Updates an existing SSO token (full replacement).
+     * All token fields must be provided.
+     * 
+     * @param string $providerKey SSO provider key
+     * @param array $tokenData Complete token data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function updateSsoToken(string $providerKey, array $tokenData): array
+    {
+        $this->validateProviderKey($providerKey);
+        $this->validateSsoTokenData($tokenData);
+
+        try {
+            return $this->put("api/nsk/v1/user/singleSignOnToken/{$providerKey}", $tokenData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to update SSO token: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Patch SSO token (partial update)
+     * 
+     * PATCH /api/nsk/v1/user/singleSignOnToken/{providerKey}
+     * GraphQL: singleSignOnTokenModify
+     * 
+     * Patches an existing SSO token (partial update).
+     * Only specified fields are updated, others remain unchanged.
+     * 
+     * @param string $providerKey SSO provider key
+     * @param array $patchData Partial token data to update
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function patchSsoToken(string $providerKey, array $patchData): array
+    {
+        $this->validateProviderKey($providerKey);
+
+        if (empty($patchData)) {
+            throw new JamboJetValidationException('SSO token patch data cannot be empty');
+        }
+
+        try {
+            return $this->patch("api/nsk/v1/user/singleSignOnToken/{$providerKey}", $patchData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to patch SSO token: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Delete SSO token
+     * 
+     * DELETE /api/nsk/v1/user/singleSignOnToken/{providerKey}
+     * GraphQL: singleSignOnTokenDelete
+     * 
+     * Deletes an SSO token associated with a provider.
+     * Removes the link between user and SSO provider.
+     * 
+     * @param string $providerKey SSO provider key
+     * @return array Deletion result
+     * @throws JamboJetApiException
+     */
+    public function deleteSsoToken(string $providerKey): array
+    {
+        $this->validateProviderKey($providerKey);
+
+        try {
+            return $this->delete("api/nsk/v1/user/singleSignOnToken/{$providerKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to delete SSO token: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create user account v2 (customer)
+     * 
+     * POST /api/nsk/v2/user
+     * 
+     * Creates a new customer user account using v2 endpoint.
+     * Enhanced version with additional features/validation compared to v1.
+     * 
+     * @param array $userData User account creation data
+     * @return array Created user information
+     * @throws JamboJetApiException
+     */
+    public function createUserV2(array $userData): array
+    {
+        $this->validateUserCreateRequest($userData);
+
+        try {
+            return $this->post('api/nsk/v2/user', $userData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to create user (v2): ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create multiple users v2 (agent function)
+     * 
+     * POST /api/nsk/v2/users
+     * 
+     * Creates multiple user accounts using v2 endpoint (requires agent permissions).
+     * Enhanced version with additional features/validation compared to v1.
+     * 
+     * @param array $usersData Array of user data
+     * @return array Created users information
+     * @throws JamboJetApiException
+     */
+    public function createUsersV2(array $usersData): array
+    {
+        $this->validateUsersCreateRequest($usersData);
+
+        try {
+            return $this->post('api/nsk/v2/users', $usersData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to create users (v2): ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get user SkySpeed preferences v2 (agent function)
+     * 
+     * GET /api/nsk/v2/users/{userKey}/preferences/skySpeedSettings
+     * GraphQL: usersPreferencesSkySpeedSettingsv2
+     * 
+     * Retrieves SkySpeed settings preferences for a specific user (agent function).
+     * Returns 404 if SkySpeed preferences not found.
+     * 
+     * @param string $userKey The unique user key
+     * @return array SkySpeed settings preferences
+     * @throws JamboJetApiException
+     */
+    public function getUserSkySpeedPreferencesV2(string $userKey): array
+    {
+        $this->validateUserKey($userKey);
+
+        try {
+            return $this->get("api/nsk/v2/users/{$userKey}/preferences/skySpeedSettings");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user SkySpeed preferences (v2): ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Update user SkySpeed preferences v2 (agent function)
+     * 
+     * PUT /api/nsk/v2/users/{userKey}/preferences/skySpeedSettings
+     * GraphQL: usersPreferencesSkySpeedSettingsSetv2
+     * 
+     * Updates SkySpeed settings preferences for a specific user (agent function).
+     * If the SkySpeed settings of the user are disabled, they will be automatically
+     * enabled and updated.
+     * 
+     * VALIDATION:
+     * - All string properties validated for existence and active status
+     * - Collection currency setting logic enforced
+     * 
+     * @param string $userKey The unique user key
+     * @param array $preferencesData SkySpeed settings data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function updateUserSkySpeedPreferencesV2(string $userKey, array $preferencesData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateSkySpeedSettings($preferencesData);
+
+        try {
+            return $this->put("api/nsk/v2/users/{$userKey}/preferences/skySpeedSettings", $preferencesData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to update user SkySpeed preferences (v2): ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+
+    /**
+     * Get user's person record
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person
+     * GraphQL: usersPerson
+     * 
+     * Retrieves the complete person record associated with a specific user.
+     * Returns comprehensive person information including addresses, emails,
+     * phone numbers, programs, preferences, and all sub-resources.
+     * 
+     * @param string $userKey The unique user key
+     * @return array Person record with all details
      * @throws JamboJetApiException
      */
     public function getUserPerson(string $userKey): array
@@ -774,20 +1615,23 @@ class UserService implements UserInterface
     }
 
     /**
-     * Update user person information
+     * Update user's person record
      * 
      * PUT /api/nsk/v1/users/{userKey}/person
-     * Updates the specific user's person record basic information
+     * GraphQL: usersPersonSet
+     * 
+     * Updates the user's person record basic information (full replacement).
+     * Requires complete person data structure.
      * 
      * @param string $userKey The unique user key
-     * @param array $personData Person update data
-     * @return array Person update response
+     * @param array $personData Complete person data
+     * @return array Update result
      * @throws JamboJetApiException
      */
     public function updateUserPerson(string $userKey, array $personData): array
     {
         $this->validateUserKey($userKey);
-        $this->validatePersonEditRequest($personData);
+        $this->validatePersonData($personData);
 
         try {
             return $this->put("api/nsk/v1/users/{$userKey}/person", $personData);
@@ -800,17 +1644,2207 @@ class UserService implements UserInterface
         }
     }
 
+    /**
+     * Patch user's person record
+     * 
+     * PATCH /api/nsk/v1/users/{userKey}/person
+     * GraphQL: usersPersonModify
+     * 
+     * Partially updates the user's person record basic information.
+     * Only provided fields will be updated.
+     * 
+     * @param string $userKey The unique user key
+     * @param array $patchData Partial person data to update
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function patchUserPerson(string $userKey, array $patchData): array
+    {
+        $this->validateUserKey($userKey);
+
+        try {
+            return $this->patch("api/nsk/v1/users/{$userKey}/person", $patchData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to patch user person: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get all addresses for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/addresses
+     * 
+     * Retrieves all address records associated with the user's person.
+     * 
+     * @param string $userKey The unique user key
+     * @return array List of addresses
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonAddresses(string $userKey): array
+    {
+        $this->validateUserKey($userKey);
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/addresses");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person addresses: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create address for user's person
+     * 
+     * POST /api/nsk/v1/users/{userKey}/person/addresses
+     * GraphQL: usersPersonAddressAdd
+     * 
+     * Creates a new address for the user's person.
+     * 
+     * @param string $userKey The unique user key
+     * @param array $addressData Address data (lineOne, lineTwo, lineThree, city, provinceState, postalCode, countryCode, type)
+     * @return array Created address
+     * @throws JamboJetApiException
+     */
+    public function createUserPersonAddress(string $userKey, array $addressData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateAddressData($addressData);
+
+        try {
+            return $this->post("api/nsk/v1/users/{$userKey}/person/addresses", $addressData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to create user person address: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get specific address for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/addresses/{personAddressKey}
+     * GraphQL: usersPersonAddress
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personAddressKey The unique person address key
+     * @return array Address details
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonAddress(string $userKey, string $personAddressKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personAddressKey, 'Person address key');
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/addresses/{$personAddressKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person address: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Update address for user's person
+     * 
+     * PUT /api/nsk/v1/users/{userKey}/person/addresses/{personAddressKey}
+     * GraphQL: usersPersonAddressSet
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personAddressKey The unique person address key
+     * @param array $addressData Complete address data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function updateUserPersonAddress(string $userKey, string $personAddressKey, array $addressData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personAddressKey, 'Person address key');
+        $this->validateAddressData($addressData);
+
+        try {
+            return $this->put("api/nsk/v1/users/{$userKey}/person/addresses/{$personAddressKey}", $addressData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to update user person address: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Patch address for user's person
+     * 
+     * PATCH /api/nsk/v1/users/{userKey}/person/addresses/{personAddressKey}
+     * GraphQL: usersPersonAddressModify
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personAddressKey The unique person address key
+     * @param array $patchData Partial address data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function patchUserPersonAddress(string $userKey, string $personAddressKey, array $patchData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personAddressKey, 'Person address key');
+
+        try {
+            return $this->patch("api/nsk/v1/users/{$userKey}/person/addresses/{$personAddressKey}", $patchData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to patch user person address: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Delete address for user's person
+     * 
+     * DELETE /api/nsk/v1/users/{userKey}/person/addresses/{personAddressKey}
+     * GraphQL: usersPersonAddressDelete
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personAddressKey The unique person address key
+     * @return array Deletion result
+     * @throws JamboJetApiException
+     */
+    public function deleteUserPersonAddress(string $userKey, string $personAddressKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personAddressKey, 'Person address key');
+
+        try {
+            return $this->delete("api/nsk/v1/users/{$userKey}/person/addresses/{$personAddressKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to delete user person address: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get all affiliations for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/affiliations
+     * GraphQL: usersPersonAffiliations
+     * 
+     * @param string $userKey The unique user key
+     * @return array List of affiliations
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonAffiliations(string $userKey): array
+    {
+        $this->validateUserKey($userKey);
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/affiliations");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person affiliations: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create affiliation for user's person
+     * 
+     * POST /api/nsk/v1/users/{userKey}/person/affiliations
+     * GraphQL: usersPersonAffiliationAdd
+     * 
+     * @param string $userKey The unique user key
+     * @param array $affiliationData Affiliation data (organizationCode, personKey, etc.)
+     * @return array Created affiliation
+     * @throws JamboJetApiException
+     */
+    public function createUserPersonAffiliation(string $userKey, array $affiliationData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateRequired($affiliationData, ['organizationCode']);
+
+        try {
+            return $this->post("api/nsk/v1/users/{$userKey}/person/affiliations", $affiliationData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to create user person affiliation: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get specific affiliation for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/affiliations/{personAffiliationKey}
+     * GraphQL: usersPersonAffiliation
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personAffiliationKey The unique person affiliation key
+     * @return array Affiliation details
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonAffiliation(string $userKey, string $personAffiliationKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personAffiliationKey, 'Person affiliation key');
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/affiliations/{$personAffiliationKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person affiliation: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Update affiliation for user's person
+     * 
+     * PUT /api/nsk/v1/users/{userKey}/person/affiliations/{personAffiliationKey}
+     * GraphQL: usersPersonAffiliationSet
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personAffiliationKey The unique person affiliation key
+     * @param array $affiliationData Complete affiliation data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function updateUserPersonAffiliation(string $userKey, string $personAffiliationKey, array $affiliationData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personAffiliationKey, 'Person affiliation key');
+        $this->validateRequired($affiliationData, ['organizationCode']);
+
+        try {
+            return $this->put("api/nsk/v1/users/{$userKey}/person/affiliations/{$personAffiliationKey}", $affiliationData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to update user person affiliation: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Delete affiliation for user's person
+     * 
+     * DELETE /api/nsk/v1/users/{userKey}/person/affiliations/{personAffiliationKey}
+     * GraphQL: usersPersonAffiliationDelete
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personAffiliationKey The unique person affiliation key
+     * @return array Deletion result
+     * @throws JamboJetApiException
+     */
+    public function deleteUserPersonAffiliation(string $userKey, string $personAffiliationKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personAffiliationKey, 'Person affiliation key');
+
+        try {
+            return $this->delete("api/nsk/v1/users/{$userKey}/person/affiliations/{$personAffiliationKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to delete user person affiliation: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get all aliases for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/aliases
+     * 
+     * @param string $userKey The unique user key
+     * @return array List of aliases
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonAliases(string $userKey): array
+    {
+        $this->validateUserKey($userKey);
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/aliases");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person aliases: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create alias for user's person
+     * 
+     * POST /api/nsk/v1/users/{userKey}/person/aliases
+     * GraphQL: usersPersonAliasAdd
+     * 
+     * @param string $userKey The unique user key
+     * @param array $aliasData Alias data (name with firstName, lastName, title, suffix)
+     * @return array Created alias
+     * @throws JamboJetApiException
+     */
+    public function createUserPersonAlias(string $userKey, array $aliasData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateAliasData($aliasData);
+
+        try {
+            return $this->post("api/nsk/v1/users/{$userKey}/person/aliases", $aliasData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to create user person alias: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get specific alias for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/aliases/{personAliasKey}
+     * GraphQL: usersPersonAlias
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personAliasKey The unique person alias key
+     * @return array Alias details
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonAlias(string $userKey, string $personAliasKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personAliasKey, 'Person alias key');
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/aliases/{$personAliasKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person alias: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Update alias for user's person
+     * 
+     * PUT /api/nsk/v1/users/{userKey}/person/aliases/{personAliasKey}
+     * GraphQL: usersPersonAliasSet
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personAliasKey The unique person alias key
+     * @param array $aliasData Complete alias data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function updateUserPersonAlias(string $userKey, string $personAliasKey, array $aliasData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personAliasKey, 'Person alias key');
+        $this->validateAliasData($aliasData);
+
+        try {
+            return $this->put("api/nsk/v1/users/{$userKey}/person/aliases/{$personAliasKey}", $aliasData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to update user person alias: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Patch alias for user's person
+     * 
+     * PATCH /api/nsk/v1/users/{userKey}/person/aliases/{personAliasKey}
+     * GraphQL: usersPersonAliasModify
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personAliasKey The unique person alias key
+     * @param array $patchData Partial alias data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function patchUserPersonAlias(string $userKey, string $personAliasKey, array $patchData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personAliasKey, 'Person alias key');
+
+        try {
+            return $this->patch("api/nsk/v1/users/{$userKey}/person/aliases/{$personAliasKey}", $patchData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to patch user person alias: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Delete alias for user's person
+     * 
+     * DELETE /api/nsk/v1/users/{userKey}/person/aliases/{personAliasKey}
+     * GraphQL: usersPersonAliasDelete
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personAliasKey The unique person alias key
+     * @return array Deletion result
+     * @throws JamboJetApiException
+     */
+    public function deleteUserPersonAlias(string $userKey, string $personAliasKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personAliasKey, 'Person alias key');
+
+        try {
+            return $this->delete("api/nsk/v1/users/{$userKey}/person/aliases/{$personAliasKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to delete user person alias: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get all comments for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/comments
+     * GraphQL: usersPersonComments
+     * 
+     * @param string $userKey The unique user key
+     * @return array List of comments
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonComments(string $userKey): array
+    {
+        $this->validateUserKey($userKey);
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/comments");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person comments: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create comment for user's person
+     * 
+     * POST /api/nsk/v1/users/{userKey}/person/comments
+     * GraphQL: usersPersonCommentAdd
+     * 
+     * @param string $userKey The unique user key
+     * @param array $commentData Comment data (commentText required)
+     * @return array Created comment
+     * @throws JamboJetApiException
+     */
+    public function createUserPersonComment(string $userKey, array $commentData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateRequired($commentData, ['commentText']);
+
+        try {
+            return $this->post("api/nsk/v1/users/{$userKey}/person/comments", $commentData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to create user person comment: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get specific comment for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/comments/{personCommentKey}
+     * GraphQL: usersPersonComment
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personCommentKey The unique person comment key
+     * @return array Comment details
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonComment(string $userKey, string $personCommentKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personCommentKey, 'Person comment key');
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/comments/{$personCommentKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person comment: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Update comment for user's person
+     * 
+     * PUT /api/nsk/v1/users/{userKey}/person/comments/{personCommentKey}
+     * GraphQL: usersPersonCommentSet
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personCommentKey The unique person comment key
+     * @param array $commentData Complete comment data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function updateUserPersonComment(string $userKey, string $personCommentKey, array $commentData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personCommentKey, 'Person comment key');
+        $this->validateRequired($commentData, ['commentText']);
+
+        try {
+            return $this->put("api/nsk/v1/users/{$userKey}/person/comments/{$personCommentKey}", $commentData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to update user person comment: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Patch comment for user's person
+     * 
+     * PATCH /api/nsk/v1/users/{userKey}/person/comments/{personCommentKey}
+     * GraphQL: usersPersonCommentModify
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personCommentKey The unique person comment key
+     * @param array $patchData Partial comment data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function patchUserPersonComment(string $userKey, string $personCommentKey, array $patchData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personCommentKey, 'Person comment key');
+
+        try {
+            return $this->patch("api/nsk/v1/users/{$userKey}/person/comments/{$personCommentKey}", $patchData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to patch user person comment: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Delete comment for user's person
+     * 
+     * DELETE /api/nsk/v1/users/{userKey}/person/comments/{personCommentKey}
+     * GraphQL: usersPersonCommentDelete
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personCommentKey The unique person comment key
+     * @return array Deletion result
+     * @throws JamboJetApiException
+     */
+    public function deleteUserPersonComment(string $userKey, string $personCommentKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personCommentKey, 'Person comment key');
+
+        try {
+            return $this->delete("api/nsk/v1/users/{$userKey}/person/comments/{$personCommentKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to delete user person comment: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get all emails for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/emails
+     * 
+     * @param string $userKey The unique user key
+     * @return array List of emails
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonEmails(string $userKey): array
+    {
+        $this->validateUserKey($userKey);
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/emails");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person emails: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create email for user's person
+     * 
+     * POST /api/nsk/v1/users/{userKey}/person/emails
+     * GraphQL: usersPersonEmailAdd
+     * 
+     * @param string $userKey The unique user key
+     * @param array $emailData Email data (address, type)
+     * @return array Created email
+     * @throws JamboJetApiException
+     */
+    public function createUserPersonEmail(string $userKey, array $emailData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateEmailData($emailData);
+
+        try {
+            return $this->post("api/nsk/v1/users/{$userKey}/person/emails", $emailData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to create user person email: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get specific email for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/emails/{personEmailAddressKey}
+     * GraphQL: usersPersonEmail
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personEmailAddressKey The unique person email address key
+     * @return array Email details
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonEmail(string $userKey, string $personEmailAddressKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personEmailAddressKey, 'Person email address key');
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/emails/{$personEmailAddressKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person email: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Update email for user's person
+     * 
+     * PUT /api/nsk/v1/users/{userKey}/person/emails/{personEmailAddressKey}
+     * GraphQL: usersPersonEmailSet
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personEmailAddressKey The unique person email address key
+     * @param array $emailData Complete email data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function updateUserPersonEmail(string $userKey, string $personEmailAddressKey, array $emailData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personEmailAddressKey, 'Person email address key');
+        $this->validateEmailData($emailData);
+
+        try {
+            return $this->put("api/nsk/v1/users/{$userKey}/person/emails/{$personEmailAddressKey}", $emailData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to update user person email: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Patch email for user's person
+     * 
+     * PATCH /api/nsk/v1/users/{userKey}/person/emails/{personEmailAddressKey}
+     * GraphQL: usersPersonEmailModify
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personEmailAddressKey The unique person email address key
+     * @param array $patchData Partial email data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function patchUserPersonEmail(string $userKey, string $personEmailAddressKey, array $patchData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personEmailAddressKey, 'Person email address key');
+
+        try {
+            return $this->patch("api/nsk/v1/users/{$userKey}/person/emails/{$personEmailAddressKey}", $patchData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to patch user person email: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Delete email for user's person
+     * 
+     * DELETE /api/nsk/v1/users/{userKey}/person/emails/{personEmailAddressKey}
+     * GraphQL: usersPersonEmailDelete
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personEmailAddressKey The unique person email address key
+     * @return array Deletion result
+     * @throws JamboJetApiException
+     */
+    public function deleteUserPersonEmail(string $userKey, string $personEmailAddressKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personEmailAddressKey, 'Person email address key');
+
+        try {
+            return $this->delete("api/nsk/v1/users/{$userKey}/person/emails/{$personEmailAddressKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to delete user person email: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    // =================================================================
+    // PHASE 11: PERSON INFORMATION (6 methods)
+    // =================================================================
+
+    /**
+     * Get all information for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/information
+     * GraphQL: usersPersonInformations
+     * 
+     * @param string $userKey The unique user key
+     * @return array List of information records
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonInformation(string $userKey): array
+    {
+        $this->validateUserKey($userKey);
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/information");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person information: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create information for user's person
+     * 
+     * POST /api/nsk/v1/users/{userKey}/person/information
+     * GraphQL: usersPersonInformationAdd
+     * 
+     * @param string $userKey The unique user key
+     * @param array $informationData Information data (data, personInformationTypeCode)
+     * @return array Created information
+     * @throws JamboJetApiException
+     */
+    public function createUserPersonInformation(string $userKey, array $informationData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateRequired($informationData, ['data', 'personInformationTypeCode']);
+
+        try {
+            return $this->post("api/nsk/v1/users/{$userKey}/person/information", $informationData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to create user person information: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get specific information for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/information/{personInformationKey}
+     * GraphQL: usersPersonInformation
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personInformationKey The unique person information key
+     * @return array Information details
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonInformationByKey(string $userKey, string $personInformationKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personInformationKey, 'Person information key');
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/information/{$personInformationKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person information: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Update information for user's person
+     * 
+     * PUT /api/nsk/v1/users/{userKey}/person/information/{personInformationKey}
+     * GraphQL: usersPersonInformationSet
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personInformationKey The unique person information key
+     * @param array $informationData Complete information data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function updateUserPersonInformation(string $userKey, string $personInformationKey, array $informationData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personInformationKey, 'Person information key');
+        $this->validateRequired($informationData, ['data']);
+
+        try {
+            return $this->put("api/nsk/v1/users/{$userKey}/person/information/{$personInformationKey}", $informationData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to update user person information: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Patch information for user's person
+     * 
+     * PATCH /api/nsk/v1/users/{userKey}/person/information/{personInformationKey}
+     * GraphQL: usersPersonInformationModify
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personInformationKey The unique person information key
+     * @param array $patchData Partial information data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function patchUserPersonInformation(string $userKey, string $personInformationKey, array $patchData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personInformationKey, 'Person information key');
+
+        try {
+            return $this->patch("api/nsk/v1/users/{$userKey}/person/information/{$personInformationKey}", $patchData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to patch user person information: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Delete information for user's person
+     * 
+     * DELETE /api/nsk/v1/users/{userKey}/person/information/{personInformationKey}
+     * GraphQL: usersPersonInformationDelete
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personInformationKey The unique person information key
+     * @return array Deletion result
+     * @throws JamboJetApiException
+     */
+    public function deleteUserPersonInformation(string $userKey, string $personInformationKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personInformationKey, 'Person information key');
+
+        try {
+            return $this->delete("api/nsk/v1/users/{$userKey}/person/information/{$personInformationKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to delete user person information: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get all phone numbers for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/phoneNumbers
+     * 
+     * @param string $userKey The unique user key
+     * @return array List of phone numbers
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonPhoneNumbers(string $userKey): array
+    {
+        $this->validateUserKey($userKey);
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/phoneNumbers");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person phone numbers: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create phone number for user's person
+     * 
+     * POST /api/nsk/v1/users/{userKey}/person/phoneNumbers
+     * GraphQL: usersPersonPhoneNumberAdd
+     * 
+     * @param string $userKey The unique user key
+     * @param array $phoneData Phone number data (number, type)
+     * @return array Created phone number
+     * @throws JamboJetApiException
+     */
+    public function createUserPersonPhoneNumber(string $userKey, array $phoneData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validatePhoneNumberData($phoneData);
+
+        try {
+            return $this->post("api/nsk/v1/users/{$userKey}/person/phoneNumbers", $phoneData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to create user person phone number: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get specific phone number for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/phoneNumbers/{personPhoneNumberKey}
+     * GraphQL: usersPersonPhoneNumber
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personPhoneNumberKey The unique person phone number key
+     * @return array Phone number details
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonPhoneNumber(string $userKey, string $personPhoneNumberKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personPhoneNumberKey, 'Person phone number key');
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/phoneNumbers/{$personPhoneNumberKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person phone number: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Update phone number for user's person
+     * 
+     * PUT /api/nsk/v1/users/{userKey}/person/phoneNumbers/{personPhoneNumberKey}
+     * GraphQL: usersPersonPhoneNumberSet
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personPhoneNumberKey The unique person phone number key
+     * @param array $phoneData Complete phone number data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function updateUserPersonPhoneNumber(string $userKey, string $personPhoneNumberKey, array $phoneData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personPhoneNumberKey, 'Person phone number key');
+        $this->validatePhoneNumberData($phoneData);
+
+        try {
+            return $this->put("api/nsk/v1/users/{$userKey}/person/phoneNumbers/{$personPhoneNumberKey}", $phoneData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to update user person phone number: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Patch phone number for user's person
+     * 
+     * PATCH /api/nsk/v1/users/{userKey}/person/phoneNumbers/{personPhoneNumberKey}
+     * GraphQL: usersPersonPhoneNumberModify
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personPhoneNumberKey The unique person phone number key
+     * @param array $patchData Partial phone number data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function patchUserPersonPhoneNumber(string $userKey, string $personPhoneNumberKey, array $patchData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personPhoneNumberKey, 'Person phone number key');
+
+        try {
+            return $this->patch("api/nsk/v1/users/{$userKey}/person/phoneNumbers/{$personPhoneNumberKey}", $patchData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to patch user person phone number: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Delete phone number for user's person
+     * 
+     * DELETE /api/nsk/v1/users/{userKey}/person/phoneNumbers/{personPhoneNumberKey}
+     * GraphQL: usersPersonPhoneNumberDelete
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personPhoneNumberKey The unique person phone number key
+     * @return array Deletion result
+     * @throws JamboJetApiException
+     */
+    public function deleteUserPersonPhoneNumber(string $userKey, string $personPhoneNumberKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personPhoneNumberKey, 'Person phone number key');
+
+        try {
+            return $this->delete("api/nsk/v1/users/{$userKey}/person/phoneNumbers/{$personPhoneNumberKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to delete user person phone number: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    // =================================================================
+    // PHASE 13: PERSON PREFERENCES (6 methods)
+    // =================================================================
+
+    /**
+     * Get all preferences for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/preferences
+     * 
+     * @param string $userKey The unique user key
+     * @return array List of preferences
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonPreferences(string $userKey): array
+    {
+        $this->validateUserKey($userKey);
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/preferences");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person preferences: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create preference for user's person
+     * 
+     * POST /api/nsk/v1/users/{userKey}/person/preferences
+     * GraphQL: usersPersonPreferenceAdd
+     * 
+     * @param string $userKey The unique user key
+     * @param array $preferenceData Preference data (preferenceTypeCode, value)
+     * @return array Created preference
+     * @throws JamboJetApiException
+     */
+    public function createUserPersonPreference(string $userKey, array $preferenceData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateRequired($preferenceData, ['preferenceTypeCode', 'value']);
+
+        try {
+            return $this->post("api/nsk/v1/users/{$userKey}/person/preferences", $preferenceData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to create user person preference: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get specific preference for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/preferences/{personPreferenceKey}
+     * GraphQL: usersPersonPreference
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personPreferenceKey The unique person preference key
+     * @return array Preference details
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonPreference(string $userKey, string $personPreferenceKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personPreferenceKey, 'Person preference key');
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/preferences/{$personPreferenceKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person preference: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Update preference for user's person
+     * 
+     * PUT /api/nsk/v1/users/{userKey}/person/preferences/{personPreferenceKey}
+     * GraphQL: usersPersonPreferenceSet
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personPreferenceKey The unique person preference key
+     * @param array $preferenceData Complete preference data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function updateUserPersonPreference(string $userKey, string $personPreferenceKey, array $preferenceData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personPreferenceKey, 'Person preference key');
+        $this->validateRequired($preferenceData, ['value']);
+
+        try {
+            return $this->put("api/nsk/v1/users/{$userKey}/person/preferences/{$personPreferenceKey}", $preferenceData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to update user person preference: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Patch preference for user's person
+     * 
+     * PATCH /api/nsk/v1/users/{userKey}/person/preferences/{personPreferenceKey}
+     * GraphQL: usersPersonPreferenceModify
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personPreferenceKey The unique person preference key
+     * @param array $patchData Partial preference data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function patchUserPersonPreference(string $userKey, string $personPreferenceKey, array $patchData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personPreferenceKey, 'Person preference key');
+
+        try {
+            return $this->patch("api/nsk/v1/users/{$userKey}/person/preferences/{$personPreferenceKey}", $patchData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to patch user person preference: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Delete preference for user's person
+     * 
+     * DELETE /api/nsk/v1/users/{userKey}/person/preferences/{personPreferenceKey}
+     * GraphQL: usersPersonPreferenceDelete
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personPreferenceKey The unique person preference key
+     * @return array Deletion result
+     * @throws JamboJetApiException
+     */
+    public function deleteUserPersonPreference(string $userKey, string $personPreferenceKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personPreferenceKey, 'Person preference key');
+
+        try {
+            return $this->delete("api/nsk/v1/users/{$userKey}/person/preferences/{$personPreferenceKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to delete user person preference: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    // =================================================================
+    // PHASE 14: PERSON PROGRAMS (5 methods - NO PATCH)
+    // =================================================================
+
+    /**
+     * Get all programs for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/programs
+     * GraphQL: usersPersonPrograms
+     * 
+     * @param string $userKey The unique user key
+     * @return array List of programs
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonPrograms(string $userKey): array
+    {
+        $this->validateUserKey($userKey);
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/programs");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person programs: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create program for user's person
+     * 
+     * POST /api/nsk/v1/users/{userKey}/person/programs
+     * GraphQL: usersPersonProgramAdd
+     * 
+     * @param string $userKey The unique user key
+     * @param array $programData Program data (programCode, programNumber)
+     * @return array Created program
+     * @throws JamboJetApiException
+     */
+    public function createUserPersonProgram(string $userKey, array $programData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateRequired($programData, ['programCode', 'programNumber']);
+
+        try {
+            return $this->post("api/nsk/v1/users/{$userKey}/person/programs", $programData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to create user person program: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get specific program for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/programs/{personProgramKey}
+     * GraphQL: usersPersonProgram
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personProgramKey The unique person program key
+     * @return array Program details
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonProgram(string $userKey, string $personProgramKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personProgramKey, 'Person program key');
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/programs/{$personProgramKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person program: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Update program for user's person
+     * 
+     * PUT /api/nsk/v1/users/{userKey}/person/programs/{personProgramKey}
+     * GraphQL: usersPersonProgramSet
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personProgramKey The unique person program key
+     * @param array $programData Complete program data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function updateUserPersonProgram(string $userKey, string $personProgramKey, array $programData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personProgramKey, 'Person program key');
+        $this->validateRequired($programData, ['programNumber']);
+
+        try {
+            return $this->put("api/nsk/v1/users/{$userKey}/person/programs/{$personProgramKey}", $programData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to update user person program: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Delete program for user's person
+     * 
+     * DELETE /api/nsk/v1/users/{userKey}/person/programs/{personProgramKey}
+     * GraphQL: usersPersonProgramDelete
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personProgramKey The unique person program key
+     * @return array Deletion result
+     * @throws JamboJetApiException
+     */
+    public function deleteUserPersonProgram(string $userKey, string $personProgramKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personProgramKey, 'Person program key');
+
+        try {
+            return $this->delete("api/nsk/v1/users/{$userKey}/person/programs/{$personProgramKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to delete user person program: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    // =================================================================
+    // PHASE 15: PERSON STORED PAYMENTS (5 methods - NO PUT)
+    // =================================================================
+
+    /**
+     * Get all stored payments for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/storedPayments
+     * GraphQL: usersPersonStoredPayments
+     * 
+     * @param string $userKey The unique user key
+     * @return array List of stored payments
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonStoredPayments(string $userKey): array
+    {
+        $this->validateUserKey($userKey);
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/storedPayments");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person stored payments: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Create stored payment for user's person
+     * 
+     * POST /api/nsk/v1/users/{userKey}/person/storedPayments
+     * GraphQL: usersPersonStoredPaymentAdd
+     * 
+     * @param string $userKey The unique user key
+     * @param array $paymentData Stored payment data (paymentMethodType, accountNumber, etc.)
+     * @return array Created stored payment
+     * @throws JamboJetApiException
+     */
+    public function createUserPersonStoredPayment(string $userKey, array $paymentData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateStoredPaymentData($paymentData);
+
+        try {
+            return $this->post("api/nsk/v1/users/{$userKey}/person/storedPayments", $paymentData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to create user person stored payment: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get specific stored payment for user's person
+     * 
+     * GET /api/nsk/v1/users/{userKey}/person/storedPayments/{personStoredPaymentKey}
+     * GraphQL: usersPersonStoredPayment
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personStoredPaymentKey The unique person stored payment key
+     * @return array Stored payment details
+     * @throws JamboJetApiException
+     */
+    public function getUserPersonStoredPayment(string $userKey, string $personStoredPaymentKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personStoredPaymentKey, 'Person stored payment key');
+
+        try {
+            return $this->get("api/nsk/v1/users/{$userKey}/person/storedPayments/{$personStoredPaymentKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to get user person stored payment: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Patch stored payment for user's person
+     * 
+     * PATCH /api/nsk/v1/users/{userKey}/person/storedPayments/{personStoredPaymentKey}
+     * GraphQL: usersPersonStoredPaymentModify
+     * 
+     * NOTE: To update account number, DELETE and POST a new stored payment
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personStoredPaymentKey The unique person stored payment key
+     * @param array $patchData Partial stored payment data
+     * @return array Update result
+     * @throws JamboJetApiException
+     */
+    public function patchUserPersonStoredPayment(string $userKey, string $personStoredPaymentKey, array $patchData): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personStoredPaymentKey, 'Person stored payment key');
+
+        try {
+            return $this->patch("api/nsk/v1/users/{$userKey}/person/storedPayments/{$personStoredPaymentKey}", $patchData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to patch user person stored payment: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
+     * Delete stored payment for user's person
+     * 
+     * DELETE /api/nsk/v1/users/{userKey}/person/storedPayments/{personStoredPaymentKey}
+     * GraphQL: usersPersonStoredPaymentDelete
+     * 
+     * @param string $userKey The unique user key
+     * @param string $personStoredPaymentKey The unique person stored payment key
+     * @return array Deletion result
+     * @throws JamboJetApiException
+     */
+    public function deleteUserPersonStoredPayment(string $userKey, string $personStoredPaymentKey): array
+    {
+        $this->validateUserKey($userKey);
+        $this->validateKey($personStoredPaymentKey, 'Person stored payment key');
+
+        try {
+            return $this->delete("api/nsk/v1/users/{$userKey}/person/storedPayments/{$personStoredPaymentKey}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to delete user person stored payment: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+
     // =================================================================
     // VALIDATION METHODS
     // =================================================================
 
     /**
+     * Validate person data
+     * 
+     * @param array $data Person data
+     * @throws JamboJetValidationException
+     */
+    private function validatePersonData(array $data): void
+    {
+        // Person basic information typically includes name fields
+        if (isset($data['name'])) {
+            $this->validateNameFields($data['name']);
+        }
+
+        // Validate dates if present
+        if (isset($data['dateOfBirth'])) {
+            $this->validateDate($data['dateOfBirth'], 'Date of birth');
+        }
+
+        // Validate gender if present
+        if (isset($data['gender'])) {
+            $validGenders = ['Male', 'Female', 'Unspecified', 'Unknown'];
+            if (!in_array($data['gender'], $validGenders)) {
+                throw new JamboJetValidationException(
+                    'Invalid gender. Expected one of: ' . implode(', ', $validGenders),
+                    400
+                );
+            }
+        }
+    }
+
+    /**
+     * Validate address data
+     * 
+     * @param array $data Address data
+     * @throws JamboJetValidationException
+     */
+    private function validateAddressData(array $data): void
+    {
+        // Required fields for address
+        $this->validateRequired($data, ['countryCode']);
+
+        // Validate country code format (ISO 2-letter)
+        if (isset($data['countryCode'])) {
+            if (!preg_match('/^[A-Z]{2}$/', $data['countryCode'])) {
+                throw new JamboJetValidationException(
+                    'Country code must be a 2-letter ISO code (e.g., US, GB, KE)',
+                    400
+                );
+            }
+        }
+
+        // Validate string lengths
+        $lengths = [
+            'lineOne' => ['max' => 128],
+            'lineTwo' => ['max' => 128],
+            'lineThree' => ['max' => 128],
+            'city' => ['max' => 64],
+            'provinceState' => ['max' => 64],
+            'postalCode' => ['max' => 10],
+        ];
+
+        foreach ($lengths as $field => $rules) {
+            if (isset($data[$field])) {
+                $this->validateStringLengths([$field => $data[$field]], [$field => $rules]);
+            }
+        }
+    }
+
+    /**
+     * Validate alias data
+     * 
+     * @param array $data Alias data
+     * @throws JamboJetValidationException
+     */
+    private function validateAliasData(array $data): void
+    {
+        // Alias requires name structure
+        $this->validateRequired($data, ['name']);
+
+        if (isset($data['name'])) {
+            $this->validateNameFields($data['name']);
+        }
+    }
+
+    /**
+     * Validate email data
+     * 
+     * @param array $data Email data
+     * @throws JamboJetValidationException
+     */
+    private function validateEmailData(array $data): void
+    {
+        $this->validateRequired($data, ['address']);
+
+        // Validate email format
+        if (isset($data['address'])) {
+            $this->validateFormats(['address' => $data['address']], ['address' => 'email']);
+        }
+
+        // Validate email type if provided
+        if (isset($data['type'])) {
+            // Type should be a single character
+            if (strlen($data['type']) !== 1) {
+                throw new JamboJetValidationException(
+                    'Email type must be a single character',
+                    400
+                );
+            }
+        }
+    }
+
+    /**
+     * Validate phone number data
+     * 
+     * @param array $data Phone number data
+     * @throws JamboJetValidationException
+     */
+    private function validatePhoneNumberData(array $data): void
+    {
+        $this->validateRequired($data, ['number']);
+
+        // Validate phone number format (basic validation)
+        if (isset($data['number'])) {
+            // Remove spaces, dashes, parentheses for validation
+            $cleanNumber = preg_replace('/[\s\-\(\)]/', '', $data['number']);
+
+            if (!preg_match('/^\+?[0-9]{10,15}$/', $cleanNumber)) {
+                throw new JamboJetValidationException(
+                    'Invalid phone number format. Must be 10-15 digits, optionally starting with +',
+                    400
+                );
+            }
+        }
+
+        // Validate phone type if provided
+        if (isset($data['type'])) {
+            $validTypes = ['Home', 'Work', 'Mobile', 'Fax', 'Other'];
+            if (!in_array($data['type'], $validTypes)) {
+                throw new JamboJetValidationException(
+                    'Invalid phone type. Expected one of: ' . implode(', ', $validTypes),
+                    400
+                );
+            }
+        }
+    }
+
+    /**
+     * Validate stored payment data
+     * 
+     * @param array $data Stored payment data
+     * @throws JamboJetValidationException
+     */
+    private function validateStoredPaymentData(array $data): void
+    {
+        $this->validateRequired($data, ['paymentMethodType', 'accountNumber']);
+
+        // Validate payment method type
+        if (isset($data['paymentMethodType'])) {
+            $validTypes = ['CreditCard', 'DebitCard', 'ExternalAccount', 'MC', 'FlexPay'];
+            if (!in_array($data['paymentMethodType'], $validTypes)) {
+                throw new JamboJetValidationException(
+                    'Invalid payment method type. Expected one of: ' . implode(', ', $validTypes),
+                    400
+                );
+            }
+        }
+
+        // Validate card expiration if credit/debit card
+        if (
+            isset($data['paymentMethodType']) &&
+            in_array($data['paymentMethodType'], ['CreditCard', 'DebitCard'])
+        ) {
+
+            if (isset($data['expiration'])) {
+                // Expiration should be in MMYY or MM/YY format
+                if (!preg_match('/^(0[1-9]|1[0-2])\/?([0-9]{2})$/', $data['expiration'])) {
+                    throw new JamboJetValidationException(
+                        'Invalid expiration date format. Use MMYY or MM/YY',
+                        400
+                    );
+                }
+            }
+        }
+
+        // Validate account number length (basic check)
+        if (isset($data['accountNumber'])) {
+            $length = strlen($data['accountNumber']);
+            if ($length < 4 || $length > 19) {
+                throw new JamboJetValidationException(
+                    'Account number must be between 4 and 19 characters',
+                    400
+                );
+            }
+        }
+    }
+
+    /**
+     * Validate name fields structure
+     * 
+     * @param array $name Name data structure
+     * @throws JamboJetValidationException
+     */
+    private function validateNameFields(array $name): void
+    {
+        // Validate required name fields
+        $this->validateRequired($name, ['first', 'last']);
+
+        // Validate name field lengths
+        $lengths = [
+            'title' => ['max' => 20],
+            'first' => ['max' => 50],
+            'middle' => ['max' => 50],
+            'last' => ['max' => 50],
+            'suffix' => ['max' => 20],
+        ];
+
+        foreach ($lengths as $field => $rules) {
+            if (isset($name[$field])) {
+                $this->validateStringLengths([$field => $name[$field]], [$field => $rules]);
+            }
+        }
+
+        // Validate name doesn't contain invalid characters
+        foreach (['first', 'middle', 'last'] as $field) {
+            if (isset($name[$field]) && preg_match('/[0-9]/', $name[$field])) {
+                throw new JamboJetValidationException(
+                    ucfirst($field) . ' name should not contain numbers',
+                    400
+                );
+            }
+        }
+    }
+
+    /**
+     * Validate a generic key
+     * 
+     * @param string $key Key value
+     * @param string $keyName Key name for error messages
+     * @throws JamboJetValidationException
+     */
+    private function validateKey(string $key, string $keyName): void
+    {
+        if (empty(trim($key))) {
+            throw new JamboJetValidationException(
+                $keyName . ' cannot be empty',
+                400
+            );
+        }
+
+        // Keys are typically base64-encoded strings
+        if (strlen($key) > 200) {
+            throw new JamboJetValidationException(
+                $keyName . ' is too long (max 200 characters)',
+                400
+            );
+        }
+    }
+
+    /**
+     * Validate date format
+     * 
+     * @param string $date Date string
+     * @param string $fieldName Field name for error messages
+     * @throws JamboJetValidationException
+     */
+    private function validateDate(string $date, string $fieldName): void
+    {
+        // Support ISO 8601 format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS
+        $formats = ['Y-m-d', 'Y-m-d\TH:i:s', 'Y-m-d\TH:i:s\Z'];
+
+        $valid = false;
+        foreach ($formats as $format) {
+            $d = \DateTime::createFromFormat($format, $date);
+            if ($d && $d->format($format) === $date) {
+                $valid = true;
+                break;
+            }
+        }
+
+        if (!$valid) {
+            throw new JamboJetValidationException(
+                $fieldName . ' must be in valid date format (YYYY-MM-DD or ISO 8601)',
+                400
+            );
+        }
+    }
+
+    /**
+     * Validate impersonation request
+     * 
+     * @param array $data Impersonation data
+     * @throws JamboJetValidationException
+     */
+    private function validateImpersonationRequest(array $data): void
+    {
+        $this->validateRequired($data, ['roleCode']);
+
+        if (isset($data['roleCode'])) {
+            $this->validateStringLengths($data, ['roleCode' => ['max' => 10]]);
+        }
+    }
+
+    /**
      * Validate user role key
+     * 
+     * @param string $userRoleKey User role key
+     * @throws JamboJetValidationException
      */
     private function validateUserRoleKey(string $userRoleKey): void
     {
-        if (empty($userRoleKey)) {
-            throw new JamboJetValidationException('User role key is required');
+        $this->validateKey($userRoleKey, 'User role key');
+    }
+
+    /**
+     * Validate user key
+     * 
+     * @param string $userKey
+     * @throws JamboJetValidationException
+     */
+    private function validateUserKey(string $userKey): void
+    {
+        if (empty($userKey)) {
+            throw new JamboJetValidationException('User key is required');
+        }
+    }
+
+    /**
+     * Validate multiple users creation request
+     * 
+     * @param array $usersData
+     * @throws JamboJetValidationException
+     */
+    private function validateUsersCreateRequest(array $usersData): void
+    {
+        if (empty($usersData)) {
+            throw new JamboJetValidationException('Users data is required');
+        }
+
+        if (!is_array($usersData)) {
+            throw new JamboJetValidationException('Users data must be an array');
+        }
+    }
+
+    /**
+     * Validate user password change request (agent function)
+     * 
+     * @param array $passwordData
+     * @throws JamboJetValidationException
+     */
+    private function validateUserPasswordChangeRequest(array $passwordData): void
+    {
+        if (empty($passwordData['newPassword'])) {
+            throw new JamboJetValidationException('New password is required');
+        }
+    }
+
+    /**
+     * Validate booking search criteria
+     * 
+     * @param array $criteria
+     * @throws JamboJetValidationException
+     */
+    private function validateBookingSearchCriteria(array $criteria): void
+    {
+        // Optional validation for date formats if provided
+        if (isset($criteria['startDate']) && !empty($criteria['startDate'])) {
+            if (!$this->isValidDateTime($criteria['startDate'])) {
+                throw new JamboJetValidationException('Invalid start date format. Expected ISO 8601 format.');
+            }
+        }
+
+        if (isset($criteria['endDate']) && !empty($criteria['endDate'])) {
+            if (!$this->isValidDateTime($criteria['endDate'])) {
+                throw new JamboJetValidationException('Invalid end date format. Expected ISO 8601 format.');
+            }
+        }
+    }
+
+    /**
+     * Check if a string is a valid date-time format
+     * 
+     * @param string $dateTime
+     * @return bool
+     */
+    private function isValidDateTime(string $dateTime): bool
+    {
+        try {
+            new \DateTime($dateTime);
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+
+    /**
+     * Validate user role creation request
+     * 
+     * @param array $roleData
+     * @throws JamboJetValidationException
+     */
+    private function validateUserRoleCreateRequest(array $roleData): void
+    {
+        if (empty($roleData)) {
+            throw new JamboJetValidationException('Role data is required');
+        }
+
+        // Role code validation
+        if (empty($roleData['roleCode'])) {
+            throw new JamboJetValidationException('Role code is required');
+        }
+
+        // Effective after validation
+        if (empty($roleData['effectiveAfter'])) {
+            throw new JamboJetValidationException('Effective after date is required');
+        }
+
+        if (!$this->isValidDateTime($roleData['effectiveAfter'])) {
+            throw new JamboJetValidationException('Invalid effective after date format. Expected ISO 8601 format.');
+        }
+
+        // Effective before validation (if provided)
+        if (isset($roleData['effectiveBefore']) && !empty($roleData['effectiveBefore'])) {
+            if (!$this->isValidDateTime($roleData['effectiveBefore'])) {
+                throw new JamboJetValidationException('Invalid effective before date format. Expected ISO 8601 format.');
+            }
+        }
+
+        // Effective days validation (if provided)
+        if (isset($roleData['effectiveDays']) && !empty($roleData['effectiveDays'])) {
+            if (!is_array($roleData['effectiveDays'])) {
+                throw new JamboJetValidationException('Effective days must be an array');
+            }
+
+            // Validate day values (0-6, where 0=Sunday)
+            foreach ($roleData['effectiveDays'] as $day) {
+                if (!is_int($day) || $day < 0 || $day > 6) {
+                    throw new JamboJetValidationException('Effective days must contain integers between 0 and 6 (0=Sunday, 6=Saturday)');
+                }
+            }
+        }
+    }
+
+    /**
+     * Validate user role patch request (PATCH)
+     * 
+     * @param array $patchData
+     * @throws JamboJetValidationException
+     */
+    private function validateUserRolePatchRequest(array $patchData): void
+    {
+        if (empty($patchData)) {
+            throw new JamboJetValidationException('Role patch data is required');
+        }
+
+        // Validate date fields if provided
+        if (isset($patchData['effectiveAfter']) && !empty($patchData['effectiveAfter'])) {
+            if (!$this->isValidDateTime($patchData['effectiveAfter'])) {
+                throw new JamboJetValidationException('Invalid effective after date format. Expected ISO 8601 format.');
+            }
+        }
+
+        if (isset($patchData['effectiveBefore']) && !empty($patchData['effectiveBefore'])) {
+            if (!$this->isValidDateTime($patchData['effectiveBefore'])) {
+                throw new JamboJetValidationException('Invalid effective before date format. Expected ISO 8601 format.');
+            }
+        }
+
+        // Effective days validation (if provided)
+        if (isset($patchData['effectiveDays']) && !empty($patchData['effectiveDays'])) {
+            if (!is_array($patchData['effectiveDays'])) {
+                throw new JamboJetValidationException('Effective days must be an array');
+            }
+
+            foreach ($patchData['effectiveDays'] as $day) {
+                if (!is_int($day) || $day < 0 || $day > 6) {
+                    throw new JamboJetValidationException('Effective days must contain integers between 0 and 6 (0=Sunday, 6=Saturday)');
+                }
+            }
+        }
+    }
+
+    /**
+     * Validate preference type
+     * 
+     * @param string|int $preferenceType
+     * @throws JamboJetValidationException
+     */
+    private function validatePreferenceType($preferenceType): void
+    {
+        if ($preferenceType === '' || $preferenceType === null) {
+            throw new JamboJetValidationException('Preference type is required');
+        }
+
+        // Preference types can be: 0 (Default), 1 (Language), 2 (SkySpeed)
+        // Or string representations: 'Default', 'Language', 'SkySpeed'
+        $validTypes = [0, 1, 2, 'Default', 'Language', 'SkySpeed'];
+
+        if (!in_array($preferenceType, $validTypes, true)) {
+            throw new JamboJetValidationException(
+                'Invalid preference type. Must be 0-2 or Default/Language/SkySpeed'
+            );
+        }
+    }
+
+    /**
+     * Validate preference data
+     * 
+     * @param array $preferenceData
+     * @throws JamboJetValidationException
+     */
+    private function validatePreferenceData(array $preferenceData): void
+    {
+        if (empty($preferenceData)) {
+            throw new JamboJetValidationException('Preference data is required');
+        }
+
+        // Validate SkySpeed settings if applicable
+        if (isset($preferenceData['currencyCode'])) {
+            $this->validateSkySpeedSettings($preferenceData);
+        }
+    }
+
+    /**
+     * Validate SkySpeed settings
+     * 
+     * @param array $settings
+     * @throws JamboJetValidationException
+     */
+    private function validateSkySpeedSettings(array $settings): void
+    {
+        // Validate string length for codes (max 3 characters)
+        $codeFields = ['currencyCode', 'cultureCode', 'countryCode', 'nationality', 'collectionCurrencyCode'];
+
+        foreach ($codeFields as $field) {
+            if (isset($settings[$field]) && !empty($settings[$field])) {
+                if (strlen($settings[$field]) > 3) {
+                    throw new JamboJetValidationException(
+                        "{$field} must be a maximum of 3 characters"
+                    );
+                }
+            }
+        }
+
+        // Validate collection currency setting logic
+        if (isset($settings['collectionCurrencySetting']) && isset($settings['collectionCurrencyCode'])) {
+            $hasCollectionCurrency = !empty($settings['collectionCurrencyCode']);
+            $settingIsNone = $settings['collectionCurrencySetting'] === 0;
+
+            // Rule 1: collectionCurrencySetting can only be None (0) if collectionCurrencyCode is empty
+            if ($hasCollectionCurrency && $settingIsNone) {
+                throw new JamboJetValidationException(
+                    'Collection currency setting cannot be None when collection currency code is provided'
+                );
+            }
+
+            // Rule 2: collectionCurrencySetting cannot be None if collectionCurrencyCode has value
+            if (!$hasCollectionCurrency && !$settingIsNone) {
+                throw new JamboJetValidationException(
+                    'Collection currency code is required when collection currency setting is not None'
+                );
+            }
+        }
+    }
+
+    /**
+     * Validate SSO provider key
+     * 
+     * @param string $providerKey
+     * @throws JamboJetValidationException
+     */
+    private function validateProviderKey(string $providerKey): void
+    {
+        if (empty($providerKey)) {
+            throw new JamboJetValidationException('SSO provider key is required');
+        }
+    }
+
+    /**
+     * Validate SSO token data
+     * 
+     * @param array $tokenData
+     * @throws JamboJetValidationException
+     */
+    private function validateSsoTokenData(array $tokenData): void
+    {
+        if (empty($tokenData)) {
+            throw new JamboJetValidationException('SSO token data is required');
+        }
+
+        // singleSignOn field is required
+        if (empty($tokenData['singleSignOn'])) {
+            throw new JamboJetValidationException('SSO token (singleSignOn) is required');
+        }
+
+        // Validate max length (256 characters)
+        if (strlen($tokenData['singleSignOn']) > 256) {
+            throw new JamboJetValidationException('SSO token cannot exceed 256 characters');
+        }
+
+        // Validate expiration date format if provided
+        if (isset($tokenData['expirationDate']) && !empty($tokenData['expirationDate'])) {
+            if (!$this->isValidDateTime($tokenData['expirationDate'])) {
+                throw new JamboJetValidationException('Invalid expiration date format. Expected ISO 8601 format.');
+            }
         }
     }
 
@@ -923,15 +3957,6 @@ class UserService implements UserInterface
         $this->validateRequiredFields($data, ['personKey', 'username', 'password']);
     }
 
-    /**
-     * Validate users create request
-     */
-    private function validateUsersCreateRequest(array $data): void
-    {
-        if (!is_array($data) || empty($data)) {
-            throw new JamboJetValidationException('Users data array is required');
-        }
-    }
 
     /**
      * Validate users create request v2
@@ -1001,44 +4026,6 @@ class UserService implements UserInterface
                     $this->validateRoleCode($role['roleCode']);
                 }
             }
-        }
-    }
-
-
-    /**
-     * Validate user role create request
-     * 
-     * @param array $data Role data
-     * @throws JamboJetValidationException
-     */
-    private function validateUserRoleCreateRequest(array $data): void
-    {
-        // Validate required fields
-        $this->validateRequired($data, ['roleCode']);
-
-        // Validate role code format
-        $this->validateRoleCode($data['roleCode']);
-
-        // Validate optional fields if provided
-        if (isset($data['organizationCode'])) {
-            $this->validateOrganizationCode($data['organizationCode']);
-        }
-
-        if (isset($data['locationGroupCode'])) {
-            $this->validateLocationGroupCode($data['locationGroupCode']);
-        }
-
-        if (isset($data['permissions']) && is_array($data['permissions'])) {
-            foreach ($data['permissions'] as $permission) {
-                if (empty(trim($permission))) {
-                    throw new JamboJetValidationException('Permission cannot be empty');
-                }
-            }
-        }
-
-        // Validate role description length
-        if (isset($data['description'])) {
-            $this->validateStringLengths($data, ['description' => ['max' => 500]]);
         }
     }
 
@@ -1418,42 +4405,6 @@ class UserService implements UserInterface
         }
     }
 
-    /**
-     * Validate impersonation request
-     * 
-     * @param array $data Impersonation data
-     * @throws JamboJetValidationException
-     */
-    private function validateImpersonationRequest(array $data): void
-    {
-        // Must specify either target user or role
-        if (!isset($data['targetUserKey']) && !isset($data['targetRole'])) {
-            throw new JamboJetValidationException(
-                'Either targetUserKey or targetRole must be specified',
-                400
-            );
-        }
-
-        // Validate target user key if provided
-        if (isset($data['targetUserKey'])) {
-            $this->validateUserKey($data['targetUserKey']);
-        }
-
-        // Validate target role if provided
-        if (isset($data['targetRole'])) {
-            $this->validateStringLengths($data, ['targetRole' => ['max' => 50]]);
-        }
-
-        // Validate impersonation reason if provided
-        if (isset($data['reason'])) {
-            $this->validateStringLengths($data, ['reason' => ['max' => 200]]);
-        }
-
-        // Validate session duration if provided
-        if (isset($data['sessionDurationMinutes'])) {
-            $this->validateNumericRanges($data, ['sessionDurationMinutes' => ['min' => 5, 'max' => 480]]);
-        }
-    }
 
     // =================================================================
     // HELPER VALIDATION METHODS FOR COMPLEX STRUCTURES
@@ -1583,41 +4534,6 @@ class UserService implements UserInterface
 
         if (isset($personalInfo['emergencyContact'])) {
             $this->validateEmergencyContact($personalInfo['emergencyContact']);
-        }
-    }
-
-    /**
-     * Validate name fields
-     * 
-     * @param array $data Data containing name fields
-     * @throws JamboJetValidationException
-     */
-    private function validateNameFields(array $data): void
-    {
-        $nameFields = ['title', 'firstName', 'middleName', 'lastName', 'suffix'];
-        $nameLengths = [
-            'title' => ['max' => 10],
-            'firstName' => ['min' => 1, 'max' => 50],
-            'middleName' => ['max' => 50],
-            'lastName' => ['min' => 1, 'max' => 50],
-            'suffix' => ['max' => 10]
-        ];
-
-        foreach ($nameFields as $field) {
-            if (isset($data[$field])) {
-                // Validate length
-                if (isset($nameLengths[$field])) {
-                    $this->validateStringLengths([$field => $data[$field]], [$field => $nameLengths[$field]]);
-                }
-
-                // Validate characters (letters, spaces, hyphens, apostrophes only)
-                if (!preg_match("/^[a-zA-Z\s\-'\.]+$/", $data[$field])) {
-                    throw new JamboJetValidationException(
-                        "{$field} contains invalid characters. Only letters, spaces, hyphens, and apostrophes are allowed",
-                        400
-                    );
-                }
-            }
         }
     }
 
@@ -1938,7 +4854,7 @@ class UserService implements UserInterface
 
         if (isset($patterns[$countryCode])) {
             if (!preg_match($patterns[$countryCode], $postalCode)) {
-                throw new \SantosDave\JamboJet\Exceptions\JamboJetValidationException(
+                throw new JamboJetValidationException(
                     "Invalid postal code format for country {$countryCode}",
                     400
                 );
@@ -2145,30 +5061,6 @@ class UserService implements UserInterface
                     400
                 );
             }
-        }
-    }
-
-    /**
-     * Validate user key
-     * 
-     * @param string $userKey User key
-     * @throws JamboJetValidationException
-     */
-    private function validateUserKey(string $userKey): void
-    {
-        if (empty(trim($userKey))) {
-            throw new JamboJetValidationException(
-                'User key cannot be empty',
-                400
-            );
-        }
-
-        // User keys are typically alphanumeric with minimum length
-        if (strlen($userKey) < 5) {
-            throw new JamboJetValidationException(
-                'Invalid user key format',
-                400
-            );
         }
     }
 
@@ -2426,7 +5318,7 @@ class UserService implements UserInterface
         // Validate phone numbers if provided
         if (isset($contactInfo['phones']) && is_array($contactInfo['phones'])) {
             foreach ($contactInfo['phones'] as $index => $phone) {
-                $this->validatePhoneContact($phone, $index);
+                $this->validatePhoneNumber($phone, $index);
             }
         }
 
