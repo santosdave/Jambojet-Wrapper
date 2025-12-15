@@ -37,6 +37,20 @@ interface AuthenticationInterface
      */
     public function autoAuthenticate(): array;
 
+    /**
+     * Check if there is a valid authenticated session
+     *
+     * @return bool
+     */
+    public function isAuthenticated(): bool;
+
+
+    /**
+     * Ensure there is a valid authenticated session, otherwise throw an exception
+     *
+     * @throws \SantosDave\JamboJet\Exceptions\JamboJetAuthenticationException
+     */
+    public function ensureAuthenticated(): void;
 
 
     /**

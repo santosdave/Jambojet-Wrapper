@@ -30,12 +30,6 @@ interface ResourcesInterface
     public function getPassengerTypes(array $criteria = []): array;
 
     /**
-     * Get station types
-     * GET /api/nsk/v#/resources/stationTypes
-     */
-    public function getStationTypes(array $criteria = []): array;
-
-    /**
      * Get bundle configurations
      * GET /api/nsk/v#/resources/bundles/{bundleCode}
      */
@@ -362,52 +356,6 @@ interface ResourcesInterface
      */
     public function getStationCategory(string $stationCategoryCode, ?string $cultureCode = null): array;
 
-    /**
-     * Get specific station type
-     * GET /api/nsk/v1/resources/stationTypes/{stationTypeCode}
-     * 
-     * @param string $stationTypeCode Station type code
-     * @param string|null $cultureCode Optional culture code
-     * @return array Station type details
-     */
-    public function getStationType(string $stationTypeCode, ?string $cultureCode = null): array;
-
-    /**
-     * Get stations summary
-     * GET /api/nsk/v1/resources/stations/summary
-     * 
-     * @param array $criteria Optional filtering criteria
-     * @return array Stations summary collection
-     */
-    public function getStationsSummary(array $criteria = []): array;
-
-    /**
-     * Get stations (v2 endpoint)
-     * GET /api/nsk/v2/resources/stations
-     * 
-     * @param array $criteria Optional filtering criteria
-     * @return array Stations collection (v2)
-     */
-    public function getStationsV2(array $criteria = []): array;
-
-    /**
-     * Get specific station (v2 endpoint)
-     * GET /api/nsk/v2/resources/stations/{stationCode}
-     * 
-     * @param string $stationCode Station code (3-letter IATA)
-     * @param string|null $cultureCode Optional culture code
-     * @return array Station details (v2)
-     */
-    public function getStationV2(string $stationCode, ?string $cultureCode = null): array;
-
-    /**
-     * Get station details (v2 endpoint)
-     * GET /api/nsk/v2/resources/stations/{stationCode}/details
-     * 
-     * @param string $stationCode Station code
-     * @return array Station detailed information (v2)
-     */
-    public function getStationDetailsV2(string $stationCode): array;
 
     /**
      * Get station city
@@ -460,14 +408,6 @@ interface ResourcesInterface
      */
     public function getDocumentType(string $documentTypeCode, ?string $cultureCode = null): array;
 
-    /**
-     * Get document type groups
-     * GET /api/nsk/v1/resources/DocumentTypeGroups
-     * 
-     * @param array $criteria Optional filtering criteria
-     * @return array Document type groups collection
-     */
-    public function getDocumentTypeGroups(array $criteria = []): array;
 
     /**
      * Get document type requirements
@@ -1228,4 +1168,34 @@ interface ResourcesInterface
      * @return array Unit types collection
      */
     public function getUnitTypes(?string $cultureCode = null): array;
+
+    /**
+     * Get specific airport by station code
+     * GET /api/nsk/v1/resources/airports/{stationCode}
+     * 
+     * @param string $stationCode Station code (3-letter IATA)
+     * @param array $criteria Optional filtering criteria
+     * @return array Airport details
+     */
+    public function getAirportByCode(string $stationCode, array $criteria = []): array;
+
+    /**
+     * Get airport details
+     * GET /api/nsk/v1/resources/airports/{stationCode}/details
+     * 
+     * @param string $stationCode Station code (3-letter IATA)
+     * @return array Airport detailed information
+     */
+    public function getAirportDetails(string $stationCode): array;
+
+    //getAirportsByCategory(string $categoryCode, array $params = []): array
+    /**
+     * Get airports by category
+     * GET /api/nsk/v1/resources/airports/category/{categoryCode}
+     * 
+     * @param string $categoryCode Category code
+     * @param array $params Query parameters (CultureCode, ActiveOnly, etc.)
+     * @return array Airports collection by category
+     */
+    public function getAirportsByCategory(string $categoryCode, array $params = []): array;
 }

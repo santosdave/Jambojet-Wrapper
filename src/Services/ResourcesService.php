@@ -26,7 +26,6 @@ use SantosDave\JamboJet\Exceptions\JamboJetValidationException;
  * - GET /api/nsk/v1/resources/cultures - Get cultures/languages
  * - GET /api/nsk/v1/resources/fareTypes - Get fare types
  * - GET /api/nsk/v1/resources/passengerTypes - Get passenger types
- * - GET /api/nsk/v1/resources/stationTypes - Get station types
  * - GET /api/nsk/v1/resources/addressTypes - Get address types
  * - GET /api/nsk/v1/resources/bundles/{bundleCode} - Get bundle configuration
  * - GET /api/nsk/v1/resources/bundles/applications - Get bundle applications
@@ -253,30 +252,6 @@ class ResourcesService implements ResourcesInterface
         }
     }
 
-    /**
-     * Get station types
-     * 
-     * GET /api/nsk/v1/resources/stationTypes
-     * Retrieves station type configurations
-     * 
-     * @param array $criteria Optional filtering criteria
-     * @return array Collection of station types
-     * @throws JamboJetApiException
-     */
-    public function getStationTypes(array $criteria = []): array
-    {
-        $this->validateResourceCriteria($criteria);
-
-        try {
-            return $this->get('api/nsk/v1/resources/stationTypes', $criteria);
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to get station types: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
 
     /**
      * Get bundle configuration
@@ -2327,137 +2302,6 @@ class ResourcesService implements ResourcesInterface
         }
     }
 
-    /**
-     * Get specific station type
-     * 
-     * GET /api/nsk/v1/resources/stationTypes/{stationTypeCode}
-     * Retrieves details for a specific station type
-     * 
-     * @param string $stationTypeCode Station type code
-     * @param string|null $cultureCode Optional culture code
-     * @return array Station type details
-     * @throws JamboJetApiException
-     */
-    public function getStationType(string $stationTypeCode, ?string $cultureCode = null): array
-    {
-        if (empty($stationTypeCode)) {
-            throw new JamboJetValidationException('Station type code is required');
-        }
-
-        $params = $cultureCode ? ['cultureCode' => $cultureCode] : [];
-
-        try {
-            return $this->get("api/nsk/v1/resources/stationTypes/{$stationTypeCode}", $params);
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to get station type: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
-
-    /**
-     * Get stations summary
-     * 
-     * GET /api/nsk/v1/resources/stations/summary
-     * Retrieves summarized station information (lightweight version)
-     * 
-     * @param array $criteria Optional filtering criteria
-     * @return array Stations summary collection
-     * @throws JamboJetApiException
-     */
-    public function getStationsSummary(array $criteria = []): array
-    {
-        $this->validateResourceCriteria($criteria);
-
-        try {
-            return $this->get('api/nsk/v1/resources/stations/summary', $criteria);
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to get stations summary: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
-
-    /**
-     * Get stations (v2 endpoint)
-     * 
-     * GET /api/nsk/v2/resources/stations
-     * V2 version with enhanced station data
-     * 
-     * @param array $criteria Optional filtering criteria
-     * @return array Stations collection (v2)
-     * @throws JamboJetApiException
-     */
-    public function getStationsV2(array $criteria = []): array
-    {
-        $this->validateResourceCriteria($criteria);
-
-        try {
-            return $this->get('api/nsk/v2/resources/stations', $criteria);
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to get stations (v2): ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
-
-    /**
-     * Get specific station (v2 endpoint)
-     * 
-     * GET /api/nsk/v2/resources/stations/{stationCode}
-     * 
-     * @param string $stationCode Station code (3-letter IATA)
-     * @param string|null $cultureCode Optional culture code
-     * @return array Station details (v2)
-     * @throws JamboJetApiException
-     */
-    public function getStationV2(string $stationCode, ?string $cultureCode = null): array
-    {
-        $this->validateStationCode($stationCode);
-
-        $params = $cultureCode ? ['cultureCode' => $cultureCode] : [];
-
-        try {
-            return $this->get("api/nsk/v2/resources/stations/{$stationCode}", $params);
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to get station (v2): ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
-
-    /**
-     * Get station details (v2 endpoint)
-     * 
-     * GET /api/nsk/v2/resources/stations/{stationCode}/details
-     * Enhanced detailed information for a station (not cached)
-     * 
-     * @param string $stationCode Station code
-     * @return array Station detailed information (v2)
-     * @throws JamboJetApiException
-     */
-    public function getStationDetailsV2(string $stationCode): array
-    {
-        $this->validateStationCode($stationCode);
-
-        try {
-            return $this->get("api/nsk/v2/resources/stations/{$stationCode}/details");
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to get station details (v2): ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
 
     /**
      * Get station city
@@ -2593,32 +2437,6 @@ class ResourcesService implements ResourcesInterface
         } catch (\Exception $e) {
             throw new JamboJetApiException(
                 'Failed to get document type: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
-
-    /**
-     * Get document type groups
-     * 
-     * GET /api/nsk/v1/resources/DocumentTypeGroups
-     * Retrieves document type groupings for categorization
-     * (e.g., TravelVisa, RedressNumber, KnownTravelerId)
-     * 
-     * @param array $criteria Optional filtering criteria
-     * @return array Document type groups collection
-     * @throws JamboJetApiException
-     */
-    public function getDocumentTypeGroups(array $criteria = []): array
-    {
-        $this->validateResourceCriteria($criteria);
-
-        try {
-            return $this->get('api/nsk/v1/resources/DocumentTypeGroups', $criteria);
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to get document type groups: ' . $e->getMessage(),
                 $e->getCode(),
                 $e
             );

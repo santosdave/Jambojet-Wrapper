@@ -374,14 +374,5 @@ class JamboJetServiceProvider extends ServiceProvider
                 'JamboJet configuration error: logging configuration is missing or invalid'
             );
         }
-
-        // Log configuration status (excluding sensitive data)
-        Log::debug('JamboJet configuration loaded', [
-            'base_url' => $config['base_url'],
-            'environment' => $config['environment'] ?? 'not set',
-            'timeout' => $config['timeout'] ?? 'not set',
-            'cache_enabled' => $config['cache']['enabled'] ?? false,
-            'logging_enabled' => $config['logging']['enabled'] ?? false,
-        ]);
     }
 }

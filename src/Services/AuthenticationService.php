@@ -117,7 +117,7 @@ class AuthenticationService implements AuthenticationInterface
     public function getTokenInfo(): array
     {
         try {
-            return $this->get('api/auth/v1/token/user');
+            return $this->get('api/auth/v1/token');
         } catch (\Exception $e) {
             throw new JamboJetAuthenticationException(
                 'Failed to get token information: ' . $e->getMessage(),
