@@ -39,7 +39,7 @@ The JamboJet NSK API Wrapper is a production-ready PHP SDK that provides a compl
 Install via Composer:
 
 ```bash
-composer require santosdave/jambojet-nsk-api
+composer require santosdave/jambojet-laravel
 ```
 
 ## ⚙️ Configuration
