@@ -201,17 +201,30 @@ trait HandlesApiRequests
     protected function ensureValidToken(): void
     {
         try {
+            // First, try to load token from cache
+            if (!$this->accessToken) {
+                $this->loadCachedTokenIfAvailable();
+            }
+
             // Get auth service
             $authService = app(AuthenticationInterface::class);
 
             // Check if token is expiring soon or doesn't exist
             if (!$this->accessToken || $authService->isTokenExpiringSoon(120)) {
                 Log::info('JamboJet: Token missing or expiring soon, authenticating');
-                $authService->autoAuthenticate();
 
-                // Get the token from auth service
-                if ($this->accessToken) {
-                    $this->setAccessToken($this->accessToken);
+                // Authenticate and get response
+                $response = $authService->autoAuthenticate();
+
+                // ✅ FIX: Extract token from response and set it on THIS instance
+                if (isset($response['data']['data']['token'])) {
+                    $this->setAccessToken($response['data']['data']['token']);
+                } else {
+                    // ✅ FIX: Fallback - try to load from global cache after auth
+                    $token = Cache::get('jambojet_current_token');
+                    if ($token) {
+                        $this->setAccessToken($token);
+                    }
                 }
             }
         } catch (\Exception $e) {

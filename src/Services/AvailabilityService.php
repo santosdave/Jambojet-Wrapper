@@ -478,8 +478,18 @@ class AvailabilityService implements AvailabilityInterface
             );
         }
 
-        // Validate passengers array (PassengerSearchCriteria[])
-        $this->validatePassengerSearchCriteria($data['passengers']);
+        if (isset($data['passengers']['types'])) {
+            // v4 format: pass only the 'types' array
+            $this->validatePassengerSearchCriteria($data['passengers']['types']);
+
+            // Validate residentCountry if provided
+            if (isset($data['passengers']['residentCountry'])) {
+                $this->validateFormats($data['passengers'], ['residentCountry' => 'country_code']);
+            }
+        } else {
+            // v3 format: pass the entire passengers array
+            $this->validatePassengerSearchCriteria($data['passengers']);
+        }
 
         // Validate optional fields
         if (isset($data['promotionCode'])) {
