@@ -262,30 +262,30 @@ class BookingService implements BookingInterface
         }
     }
 
-    /**
-     * Divide current booking
-     * POST /api/nsk/v2/booking/divide
-     * 
-     * Requires valid user to be logged in
-     * 
-     * @param array $divideRequest Divide request data
-     * @return array New booking or cancellation confirmation
-     * @throws JamboJetApiException
-     */
-    public function divideBooking(array $divideRequest): array
-    {
-        $this->validateDivideRequest($divideRequest);
+    // /**
+    //  * Divide current booking
+    //  * POST /api/nsk/v2/booking/divide
+    //  * 
+    //  * Requires valid user to be logged in
+    //  * 
+    //  * @param array $divideRequest Divide request data
+    //  * @return array New booking or cancellation confirmation
+    //  * @throws JamboJetApiException
+    //  */
+    // public function divideBooking(array $divideRequest): array
+    // {
+    //     $this->validateDivideRequest($divideRequest);
 
-        try {
-            return $this->post('api/nsk/v2/booking/divide', $divideRequest);
-        } catch (\Exception $e) {
-            throw new JamboJetApiException(
-                'Failed to divide booking: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
-        }
-    }
+    //     try {
+    //         return $this->post('api/nsk/v2/booking/divide', $divideRequest);
+    //     } catch (\Exception $e) {
+    //         throw new JamboJetApiException(
+    //             'Failed to divide booking: ' . $e->getMessage(),
+    //             $e->getCode(),
+    //             $e
+    //         );
+    //     }
+    // }
 
     /**
      * Get recommended hold date if available

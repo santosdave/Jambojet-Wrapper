@@ -780,52 +780,168 @@ class TripService  implements TripInterface
      */
     private function validateBookingData(array $data): void
     {
-        // Validate journey keys if provided
-        if (isset($data['journeyKeys'])) {
-            if (!is_array($data['journeyKeys'])) {
-                throw new \InvalidArgumentException('Journey keys must be an array');
+        // Validate passengers array exists
+        if (!isset($data['passengers']) || !is_array($data['passengers'])) {
+            throw new \InvalidArgumentException('Passengers array is required');
+        }
+
+        if (empty($data['passengers'])) {
+            throw new \InvalidArgumentException('At least one passenger is required');
+        }
+
+        foreach ($data['passengers'] as $index => $bookingPassenger) {
+            // Validate that 'passenger' wrapper exists (BookingPassengerRequest requirement)
+            if (!isset($bookingPassenger['passenger']) || !is_array($bookingPassenger['passenger'])) {
+                throw new \InvalidArgumentException("Passengers[{$index}]: 'passenger' object wrapper is required");
             }
-            if (empty($data['journeyKeys'])) {
-                throw new \InvalidArgumentException('At least one journey key is required');
+
+            $passenger = $bookingPassenger['passenger'];
+
+            // Validate passengerTypeCode
+            if (!isset($passenger['passengerTypeCode']) || empty(trim($passenger['passengerTypeCode']))) {
+                throw new \InvalidArgumentException("Passenger {$index}: passengerTypeCode is required");
+            }
+
+            // Validate name object
+            if (!isset($passenger['name']) || !is_array($passenger['name'])) {
+                throw new \InvalidArgumentException("Passenger {$index}: name object is required");
+            }
+
+            if (!isset($passenger['name']['first']) || empty(trim($passenger['name']['first']))) {
+                throw new \InvalidArgumentException("Passenger {$index}: first name is required");
+            }
+
+            if (!isset($passenger['name']['last']) || empty(trim($passenger['name']['last']))) {
+                throw new \InvalidArgumentException("Passenger {$index}: last name is required");
+            }
+
+            // Validate info object
+            if (!isset($passenger['info']) || !is_array($passenger['info'])) {
+                throw new \InvalidArgumentException("Passenger {$index}: info object is required");
+            }
+
+            $requiredInfoFields = ['nationality', 'residentCountry', 'gender', 'dateOfBirth'];
+            foreach ($requiredInfoFields as $field) {
+                if (!isset($passenger['info'][$field])) {
+                    throw new \InvalidArgumentException("Passenger {$index}: info.{$field} is required");
+                }
+            }
+
+            // Validate date of birth format
+            if (!$this->isValidDate($passenger['info']['dateOfBirth'])) {
+                throw new \InvalidArgumentException("Passenger {$index}: Invalid dateOfBirth format (expected YYYY-MM-DD)");
+            }
+
+            // Validate travel documents if provided
+            if (isset($passenger['travelDocuments'])) {
+                if (!is_array($passenger['travelDocuments'])) {
+                    throw new \InvalidArgumentException("Passenger {$index}: travelDocuments must be an array");
+                }
+
+                foreach ($passenger['travelDocuments'] as $docIndex => $document) {
+                    if (!isset($document['number']) || empty(trim($document['number']))) {
+                        throw new \InvalidArgumentException("Passenger {$index}, Document {$docIndex}: document number is required");
+                    }
+
+                    if (!isset($document['documentTypeCode']) || empty(trim($document['documentTypeCode']))) {
+                        throw new \InvalidArgumentException("Passenger {$index}, Document {$docIndex}: documentTypeCode is required");
+                    }
+
+                    if (isset($document['dateOfBirth']) && !$this->isValidDate($document['dateOfBirth'])) {
+                        throw new \InvalidArgumentException("Passenger {$index}, Document {$docIndex}: Invalid dateOfBirth format");
+                    }
+
+                    if (isset($document['expirationDate']) && !$this->isValidDate($document['expirationDate'])) {
+                        throw new \InvalidArgumentException("Passenger {$index}, Document {$docIndex}: Invalid expirationDate format");
+                    }
+                }
+            }
+
+            // Validate SSRs if provided (optional field in BookingPassengerRequest)
+            if (isset($bookingPassenger['ssrs'])) {
+                if (!is_array($bookingPassenger['ssrs'])) {
+                    throw new \InvalidArgumentException("Passenger {$index}: ssrs must be an array");
+                }
+
+                foreach ($bookingPassenger['ssrs'] as $ssrIndex => $ssr) {
+                    if (!isset($ssr['ssrCode']) || empty(trim($ssr['ssrCode']))) {
+                        throw new \InvalidArgumentException("Passenger {$index}, SSR {$ssrIndex}: ssrCode is required");
+                    }
+                }
+            }
+
+            // Validate discountCode if provided (optional field in BookingPassengerRequest)
+            if (isset($bookingPassenger['discountCode']) && strlen($bookingPassenger['discountCode']) > 4) {
+                throw new \InvalidArgumentException("Passenger {$index}: discountCode must be 4 characters or less");
             }
         }
 
-        // Validate passengers if provided
-        if (isset($data['passengers'])) {
-            if (!is_array($data['passengers'])) {
-                throw new \InvalidArgumentException('Passengers must be an array');
+        // Validate journeys
+        if (!isset($data['journeys']) || !is_array($data['journeys'])) {
+            throw new \InvalidArgumentException('Journeys object is required');
+        }
+
+        if (!isset($data['journeys']['keys']) || !is_array($data['journeys']['keys'])) {
+            throw new \InvalidArgumentException('Journey keys array is required');
+        }
+
+        if (empty($data['journeys']['keys'])) {
+            throw new \InvalidArgumentException('At least one journey key is required');
+        }
+
+        foreach ($data['journeys']['keys'] as $index => $journey) {
+            if (!isset($journey['journeyKey']) || empty(trim($journey['journeyKey']))) {
+                throw new \InvalidArgumentException("Journey {$index}: journeyKey is required");
             }
 
-            foreach ($data['passengers'] as $index => $passenger) {
-                if (!isset($passenger['firstName']) || empty(trim($passenger['firstName']))) {
-                    throw new \InvalidArgumentException("Passenger {$index}: firstName is required");
-                }
-                if (!isset($passenger['lastName']) || empty(trim($passenger['lastName']))) {
-                    throw new \InvalidArgumentException("Passenger {$index}: lastName is required");
-                }
-                if (!isset($passenger['passengerTypeCode'])) {
-                    throw new \InvalidArgumentException("Passenger {$index}: passengerTypeCode is required");
+            if (!isset($journey['fareAvailabilityKey']) || empty(trim($journey['fareAvailabilityKey']))) {
+                throw new \InvalidArgumentException("Journey {$index}: fareAvailabilityKey is required");
+            }
+        }
+
+        // Validate contact
+        if (!isset($data['contact']) || !is_array($data['contact'])) {
+            throw new \InvalidArgumentException('Contact object is required');
+        }
+
+        if (!isset($data['contact']['emailAddress']) || empty(trim($data['contact']['emailAddress']))) {
+            throw new \InvalidArgumentException('Contact email address is required');
+        }
+
+        if (!filter_var($data['contact']['emailAddress'], FILTER_VALIDATE_EMAIL)) {
+            throw new \InvalidArgumentException('Invalid contact email address format');
+        }
+
+        // if (!isset($data['contact']['customerNumber']) || empty(trim($data['contact']['customerNumber']))) {
+        //     throw new \InvalidArgumentException('Contact customer number is required');
+        // }
+
+        // Validate contact phone numbers if provided
+        if (isset($data['contact']['phoneNumbers']) && is_array($data['contact']['phoneNumbers'])) {
+            foreach ($data['contact']['phoneNumbers'] as $index => $phone) {
+                if (!isset($phone['number']) || empty(trim($phone['number']))) {
+                    throw new \InvalidArgumentException("Contact phone {$index}: number is required");
                 }
             }
         }
 
-        // Validate contacts if provided
-        if (isset($data['contacts'])) {
-            if (!is_array($data['contacts'])) {
-                throw new \InvalidArgumentException('Contacts must be an array');
-            }
-
-            foreach ($data['contacts'] as $index => $contact) {
-                if (isset($contact['emailAddress']) && !filter_var($contact['emailAddress'], FILTER_VALIDATE_EMAIL)) {
-                    throw new \InvalidArgumentException("Contact {$index}: Invalid email address");
-                }
-            }
+        // Validate currency code
+        if (!isset($data['currencyCode']) || empty(trim($data['currencyCode']))) {
+            throw new \InvalidArgumentException('Currency code is required');
         }
 
-        // Validate gender synchronization flag
-        if (isset($data['syncPassengerAndTravelDocGender']) && !is_bool($data['syncPassengerAndTravelDocGender'])) {
-            throw new \InvalidArgumentException('syncPassengerAndTravelDocGender must be a boolean');
+        if (strlen($data['currencyCode']) !== 3) {
+            throw new \InvalidArgumentException('Currency code must be 3 characters (ISO 4217)');
         }
+    }
+
+    /**
+     * Validate date format (YYYY-MM-DD)
+     */
+    private function isValidDate(string $date): bool
+    {
+        $d = \DateTime::createFromFormat('Y-m-d', $date);
+        return $d && $d->format('Y-m-d') === $date;
     }
 
     /**
