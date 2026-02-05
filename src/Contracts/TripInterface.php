@@ -6,6 +6,8 @@ interface TripInterface
 {
     // ==================== BOOKING CREATION & PASSENGERS ====================
 
+    public function preserveSession(bool $preserve = true): self;
+
     /**
      * Create new booking with journeys, contacts, passengers, SSRs
      * POST /api/nsk/v5/trip

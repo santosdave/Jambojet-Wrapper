@@ -35,6 +35,19 @@ class TokenManager
         ]);
     }
 
+    protected function loadCachedTokenIfAvailable(): void
+    {
+        $token = Cache::get($this->cachePrefix . 'token');
+        $expiresAt = Cache::get($this->cachePrefix . 'expires_at');
+
+        if ($token && $expiresAt && $expiresAt->isFuture()) {
+            static::$globalToken = $token;
+            Log::debug('JamboJet: Auto-loaded cached token', [
+                'expires_at' => $expiresAt->toDateTimeString()
+            ]);
+        }
+    }
+
     /**
      * Get current global token
      */

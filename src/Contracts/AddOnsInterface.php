@@ -4,6 +4,7 @@ namespace SantosDave\JamboJet\Contracts;
 
 interface AddOnsInterface
 {
+    public function preserveSession(bool $preserve = true): self;
     /**
      * Add activity to booking
      * POST /api/nsk/v#/addOns/activities

@@ -37,7 +37,7 @@ class AuthenticationService implements AuthenticationInterface
 {
     use HandlesApiRequests, ValidatesRequests;
 
-    protected string $cachePrefix = 'jambojet_token_';
+    protected string $cachePrefix = 'jambojet_global_';
 
     /**
      * Create access token
@@ -593,6 +593,10 @@ class AuthenticationService implements AuthenticationInterface
      */
     public function tokenExpiresIn(): int
     {
+        if (!$this->accessToken) {
+            return 0;
+        }
+
         $cached = $this->getCachedToken($this->accessToken);
         if (!$cached || !isset($cached['expires_at'])) {
             return 0;
@@ -608,6 +612,10 @@ class AuthenticationService implements AuthenticationInterface
      */
     public function isTokenExpiringSoon(int $thresholdSeconds = 120): bool
     {
+        if (!$this->accessToken) {
+            return true; // No token, needs refresh
+        }
+
         $cached = $this->getCachedToken($this->accessToken);
         if (!$cached || !isset($cached['expires_at'])) {
             return true; // No token, needs refresh

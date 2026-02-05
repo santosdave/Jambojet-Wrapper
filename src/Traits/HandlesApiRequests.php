@@ -18,6 +18,10 @@ trait HandlesApiRequests
     protected array $config;
     protected ?string $accessToken = null;
 
+    protected bool $preserveSession = false;
+
+    protected string $cachePrefix = 'jambojet_global_';
+
     public function __construct()
     {
         $this->config = config('jambojet');
@@ -198,16 +202,34 @@ trait HandlesApiRequests
         }
     }
 
+    public function preserveSession(bool $preserve = true): self
+    {
+        $this->preserveSession = $preserve;
+        return $this;
+    }
+
     protected function ensureValidToken(): void
     {
         try {
-            // First, try to load token from cache
-            if (!$this->accessToken) {
-                $this->loadCachedTokenIfAvailable();
-            }
-
+            $tokenManager = app(TokenManager::class);
             // Get auth service
             $authService = app(AuthenticationInterface::class);
+
+            // Load from shared TokenManager
+            if (!$this->accessToken && $tokenManager->hasValidToken()) {
+                $this->accessToken = $tokenManager->getToken();
+            }
+
+
+
+            if ($this->preserveSession) {
+                if (!$this->accessToken) {
+                    // Authenticate and get response
+                    $response = $authService->autoAuthenticate();
+                    $this->extractTokenFromResponse($response, $tokenManager);
+                }
+                return;
+            }
 
             // Check if token is expiring soon or doesn't exist
             if (!$this->accessToken || $authService->isTokenExpiringSoon(120)) {
@@ -215,17 +237,7 @@ trait HandlesApiRequests
 
                 // Authenticate and get response
                 $response = $authService->autoAuthenticate();
-
-                // ✅ FIX: Extract token from response and set it on THIS instance
-                if (isset($response['data']['data']['token'])) {
-                    $this->setAccessToken($response['data']['data']['token']);
-                } else {
-                    // ✅ FIX: Fallback - try to load from global cache after auth
-                    $token = Cache::get('jambojet_current_token');
-                    if ($token) {
-                        $this->setAccessToken($token);
-                    }
-                }
+                $this->extractTokenFromResponse($response, $tokenManager);
             }
         } catch (\Exception $e) {
             Log::warning('JamboJet: Auto-authentication failed', [
@@ -235,11 +247,30 @@ trait HandlesApiRequests
         }
     }
 
+    protected function extractTokenFromResponse(array $response, TokenManager $tokenManager): void
+    {
+        // ✅ FIX: Extract token from response and set it on THIS instance
+        if (isset($response['data']['data']['token'])) {
+            $this->setAccessToken($response['data']['data']['token']);
+            $expiresAt = isset($response['data']['data']['expires'])
+                ? \Carbon\Carbon::parse($response['data']['data']['expires'])
+                : now()->addMinutes(20);
+            $tokenManager->setToken($this->accessToken, $expiresAt);
+        } else {
+            $token = Cache::get($this->cachePrefix . 'token');
+            $expiresAt = Cache::get($this->cachePrefix . 'expires_at');
+            if ($token) {
+                $this->setAccessToken($token);
+                $tokenManager->setToken($this->accessToken, $expiresAt);
+            }
+        }
+    }
+
 
     protected function loadCachedTokenIfAvailable(): void
     {
-        $token = Cache::get('jambojet_current_token');
-        $expiresAt = Cache::get('jambojet_current_token_expires');
+        $token = Cache::get($this->cachePrefix . 'token');
+        $expiresAt = Cache::get($this->cachePrefix . 'expires_at');
 
         if ($token && $expiresAt && $expiresAt->isFuture()) {
             $this->accessToken = $token;

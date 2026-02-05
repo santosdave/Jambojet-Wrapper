@@ -15,7 +15,7 @@ use  SantosDave\JamboJet\Exceptions\JamboJetValidationException;
 interface  BookingInterface
 
 {
-    
+    public function preserveSession(bool $preserve = true): self;
 
     public  function  getCurrentBooking():  array;
     
@@ -24,13 +24,15 @@ interface  BookingInterface
     
 
     public  function  commitBooking(array  $commitData  =  []):  array;
+
+    public function getByRecordLocator(string $recordLocator): array;
     
 
 //     // ==================== CORE BOOKING OPERATIONS ====================
 
 //     public function create(array $bookingData): array;
 //     public function update(string $recordLocator, array $updateData): array;
-//     public function getByRecordLocator(string $recordLocator): array;
+//     
 //     public function cancel(string $recordLocator, array $cancellationData = []): array;
 //     public function commit(string $recordLocator): array;
 //     public function getHistory(string $recordLocator): array;
