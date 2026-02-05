@@ -152,6 +152,7 @@ class LowFareAvailabilityRequest extends BaseRequest
             // Validate departure date is not in the past
             $departureDate = new \DateTime($trip['departureDate']);
             $now = new \DateTime();
+            $now->setTime(0, 0, 0);
 
             if ($departureDate < $now) {
                 throw new \SantosDave\JamboJet\Exceptions\JamboJetValidationException(

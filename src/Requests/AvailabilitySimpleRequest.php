@@ -107,6 +107,7 @@ class AvailabilitySimpleRequest extends BaseRequest
         // Validate departure date is not in the past
         $beginDate = new \DateTime($this->beginDate);
         $now = new \DateTime();
+        $now->setTime(0, 0, 0);
 
         if ($beginDate < $now) {
             throw new \SantosDave\JamboJet\Exceptions\JamboJetValidationException(

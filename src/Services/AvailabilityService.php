@@ -470,6 +470,7 @@ class AvailabilityService implements AvailabilityInterface
         // Validate departure date is not in the past
         $beginDate = new \DateTime($data['beginDate']);
         $now = new \DateTime();
+        $now->setTime(0, 0, 0);
 
         if ($beginDate < $now) {
             throw new JamboJetValidationException(
