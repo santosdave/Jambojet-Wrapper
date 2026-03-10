@@ -6,6 +6,7 @@ use SantosDave\JamboJet\Exceptions\JamboJetApiException;
 
 interface PaymentInterface
 {
+    public function preserveSession(bool $preserve = true): self;
     // =================================================================
     // STATEFUL PAYMENT OPERATIONS (Work on booking in session state)
     // =================================================================
@@ -204,6 +205,13 @@ interface PaymentInterface
      * POST /api/nsk/v5/booking/payments/refunds
      */
     public function processRefundV5(array $refundData): array;
+
+    /**
+     * Process payment (v5 - newer version with enhanced validation)
+     * POST /api/nsk/v5/booking/payments
+     * Newer endpoint for processing payments with enhanced validation
+     */
+    public function processPaymentV5(array $paymentData): array;
 
     /**
      * Get payment allocations for booking in state

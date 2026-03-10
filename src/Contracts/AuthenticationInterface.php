@@ -52,6 +52,13 @@ interface AuthenticationInterface
      */
     public function ensureAuthenticated(): void;
 
+    /**
+     * Clear current token and cache
+     * Useful for forcing a fresh authentication session to avoid stale data
+     *
+     * @return self
+     */
+    public function clearCurrentToken(): self;
 
     /**
      * Abandon/logout current token

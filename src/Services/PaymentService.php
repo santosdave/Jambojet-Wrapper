@@ -1141,6 +1141,31 @@ class PaymentService implements PaymentInterface
         }
     }
 
+    /**
+     * Process payment (v5 - newer version with enhanced validation)
+     * 
+     * POST /api/nsk/v5/booking/payments
+     * Newer endpoint for processing payments with enhanced validation
+     * 
+     * @param array $paymentData Payment request data
+     * @return array Payment response
+     * @throws JamboJetApiException
+     */
+    public function processPaymentV5(array $paymentData): array
+    {
+        $this->validateRequired($paymentData, ['amount', 'paymentMethodCode']);
+
+        try {
+            return $this->post('api/nsk/v5/booking/payments', $paymentData);
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Payment processing (v5) failed: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
     // =================================================================
     //  CRITICAL PAYMENT SECURITY & MANAGEMENT
     // =================================================================

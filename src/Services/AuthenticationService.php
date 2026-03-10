@@ -692,6 +692,19 @@ class AuthenticationService implements AuthenticationInterface
     }
 
     /**
+     * Clear current token and cache
+     * Useful for forcing a fresh authentication session to avoid stale data
+     * 
+     * @return self
+     */
+    public function clearCurrentToken(): self
+    {
+        $this->clearTokenCache();
+        $this->clearAccessToken();
+        return $this;
+    }
+
+    /**
      * Restore token from cache if available
      * 
      * @param string $token Token to restore
