@@ -130,6 +130,27 @@ class BookingService implements BookingInterface
     }
 
     /**
+     * Retrieve booking into session state by record locator (STATEFUL)
+     * GET /api/nsk/v1/booking/retrieve/byRecordLocator/{recordLocator}
+     * 
+     * Loads the booking into NSK session state so payment and commit work.
+     */
+    public function retrieveIntoSession(string $recordLocator): array
+    {
+        $this->validateRecordLocator($recordLocator);
+
+        try {
+            return $this->get("api/nsk/v1/booking/retrieve/byRecordLocator/{$recordLocator}");
+        } catch (\Exception $e) {
+            throw new JamboJetApiException(
+                'Failed to retrieve booking into session: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
      * Commit booking changes
      * 
      * @param string $recordLocator Record locator

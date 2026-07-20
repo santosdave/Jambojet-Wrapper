@@ -2,30 +2,50 @@
 
 
 
-namespace  SantosDave\JamboJet\Contracts;
+
+
+namespace   SantosDave\JamboJet\Contracts;
 
 
 
-use  SantosDave\JamboJet\Exceptions\JamboJetApiException;
-
-use  SantosDave\JamboJet\Exceptions\JamboJetValidationException;
 
 
+use   SantosDave\JamboJet\Exceptions\JamboJetApiException;
 
-interface  BookingInterface
+
+use   SantosDave\JamboJet\Exceptions\JamboJetValidationException;
+
+
+
+
+
+interface   BookingInterface
+
 
 {
-    public function preserveSession(bool $preserve = true): self;
-
-    public  function  getCurrentBooking():  array;
+    
+    public  function  preserveSession(bool  $preserve  =  true):  self;
     
 
-    public  function  validateBooking():  array;
+    public   function   getCurrentBooking():  array;
     
 
-    public  function  commitBooking(array  $commitData  =  []):  array;
 
-    public function getByRecordLocator(string $recordLocator): array;
+    public   function   validateBooking():  array;
+    
+
+
+    public   function   commitBooking(array   $commitData   =   []):  array;
+    
+
+    public  function  getByRecordLocator(string  $recordLocator):  array;
+    
+
+    public  function  updateAndCommitBooking(array  $commitData  =  [],  bool  $allowConcurrentChanges  =  false):  array;
+    
+
+    public  function  retrieveIntoSession(string  $recordLocator):  array;
+    
     
 
 //     // ==================== CORE BOOKING OPERATIONS ====================
@@ -400,6 +420,7 @@ interface  BookingInterface
      * Get specific passenger address
      * GET /api/nsk/v2/booking/passengers/{passengerKey}/addresses/{addressKey}
 //      */
+
 
     //     public function getPassengerAddress(string $passengerKey, string $addressKey): array;
 
