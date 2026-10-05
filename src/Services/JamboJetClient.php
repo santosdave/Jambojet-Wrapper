@@ -60,9 +60,26 @@ class JamboJetClient
 {
     protected array $config;
 
+    /**
+     * @param  array  $config  settings for the account this client works for. Anything not
+     *                         given comes from config('jambojet'), so a partial array (say,
+     *                         only other 'auth' credentials) is enough for a second account.
+     */
     public function __construct(array $config)
     {
-        $this->config = $config;
+        $this->config = array_replace_recursive((array) config('jambojet'), $config);
+    }
+
+    /**
+     * A service for this client's account, through the container (bindings still apply).
+     *
+     * @template T
+     * @param  class-string<T>  $abstract
+     * @return T
+     */
+    protected function make(string $abstract)
+    {
+        return app()->makeWith($abstract, ['config' => $this->config]);
     }
 
 
@@ -77,7 +94,7 @@ class JamboJetClient
      */
     public function auth(): AuthenticationInterface
     {
-        return app(AuthenticationInterface::class);
+        return $this->make(AuthenticationInterface::class);
     }
 
     /**
@@ -86,7 +103,7 @@ class JamboJetClient
      */
     public function availability(): AvailabilityInterface
     {
-        return app(AvailabilityInterface::class);
+        return $this->make(AvailabilityInterface::class);
     }
 
     /**
@@ -95,7 +112,7 @@ class JamboJetClient
      */
     public function booking(): BookingInterface
     {
-        return app(BookingInterface::class);
+        return $this->make(BookingInterface::class);
     }
 
     /**
@@ -104,7 +121,7 @@ class JamboJetClient
      */
     public function payment(): PaymentInterface
     {
-        return app(PaymentInterface::class);
+        return $this->make(PaymentInterface::class);
     }
 
     /**
@@ -113,7 +130,7 @@ class JamboJetClient
      */
     public function user(): UserInterface
     {
-        return app(UserInterface::class);
+        return $this->make(UserInterface::class);
     }
 
     /**
@@ -122,7 +139,7 @@ class JamboJetClient
      */
     public function account(): AccountInterface
     {
-        return app(AccountInterface::class);
+        return $this->make(AccountInterface::class);
     }
 
     /**
@@ -131,7 +148,7 @@ class JamboJetClient
      */
     public function addOns(): AddOnsInterface
     {
-        return app(AddOnsInterface::class);
+        return $this->make(AddOnsInterface::class);
     }
 
     /**
@@ -140,7 +157,7 @@ class JamboJetClient
      */
     public function resources(): ResourcesInterface
     {
-        return app(ResourcesInterface::class);
+        return $this->make(ResourcesInterface::class);
     }
 
     // ==========================================
@@ -153,7 +170,7 @@ class JamboJetClient
      */
     public function organization(): OrganizationInterface
     {
-        return app(OrganizationInterface::class);
+        return $this->make(OrganizationInterface::class);
     }
 
     /**
@@ -162,7 +179,7 @@ class JamboJetClient
      */
     public function loyaltyProgram(): LoyaltyProgramInterface
     {
-        return app(LoyaltyProgramInterface::class);
+        return $this->make(LoyaltyProgramInterface::class);
     }
 
     /**
@@ -171,7 +188,7 @@ class JamboJetClient
      */
     public function navigation(): NavigationInterface
     {
-        return app(NavigationInterface::class);
+        return $this->make(NavigationInterface::class);
     }
 
     /**
@@ -180,7 +197,7 @@ class JamboJetClient
      */
     public function seat(): SeatInterface
     {
-        return app(SeatInterface::class);
+        return $this->make(SeatInterface::class);
     }
 
     /**
@@ -189,7 +206,7 @@ class JamboJetClient
      */
     public function bundle(): BundleInterface
     {
-        return app(BundleInterface::class);
+        return $this->make(BundleInterface::class);
     }
 
     /**
@@ -198,7 +215,7 @@ class JamboJetClient
      */
     public function boardingPass(): BoardingPassInterface
     {
-        return app(BoardingPassInterface::class);
+        return $this->make(BoardingPassInterface::class);
     }
 
     // ==========================================
@@ -211,7 +228,7 @@ class JamboJetClient
      */
     public function core(): CoreInterface
     {
-        return app(CoreInterface::class);
+        return $this->make(CoreInterface::class);
     }
 
     /**
@@ -222,7 +239,7 @@ class JamboJetClient
      */
     public function message(): MessageInterface
     {
-        return app(MessageInterface::class);
+        return $this->make(MessageInterface::class);
     }
 
     /**
@@ -233,7 +250,7 @@ class JamboJetClient
      */
     public function inventory(): InventoryInterface
     {
-        return app(InventoryInterface::class);
+        return $this->make(InventoryInterface::class);
     }
 
     /**
@@ -244,7 +261,7 @@ class JamboJetClient
      */
     public function queue(): QueueInterface
     {
-        return app(QueueInterface::class);
+        return $this->make(QueueInterface::class);
     }
 
     /**
@@ -255,7 +272,7 @@ class JamboJetClient
      */
     public function trip(): TripInterface
     {
-        return app(TripInterface::class);
+        return $this->make(TripInterface::class);
     }
 
     /**
@@ -266,7 +283,7 @@ class JamboJetClient
      */
     public function manifest(): ManifestInterface
     {
-        return app(ManifestInterface::class);
+        return $this->make(ManifestInterface::class);
     }
 
     /**
@@ -277,7 +294,7 @@ class JamboJetClient
      */
     public function voucher(): VoucherInterface
     {
-        return app(VoucherInterface::class);
+        return $this->make(VoucherInterface::class);
     }
 
     /**
@@ -288,7 +305,7 @@ class JamboJetClient
      */
     public function settings(): SettingsInterface
     {
-        return app(SettingsInterface::class);
+        return $this->make(SettingsInterface::class);
     }
 
     /**
@@ -299,7 +316,7 @@ class JamboJetClient
      */
     public function tokenManager(): TokenManagerInterface
     {
-        return app(TokenManagerInterface::class);
+        return $this->make(TokenManagerInterface::class);
     }
 
     /**
@@ -310,7 +327,7 @@ class JamboJetClient
      */
     public function currency(): CurrencyInterface
     {
-        return app(CurrencyInterface::class);
+        return $this->make(CurrencyInterface::class);
     }
 
     /**
@@ -321,7 +338,7 @@ class JamboJetClient
      */
     public function eTicket(): ETicketInterface
     {
-        return app(ETicketInterface::class);
+        return $this->make(ETicketInterface::class);
     }
 
     /**
@@ -332,7 +349,7 @@ class JamboJetClient
      */
     public function equipment(): EquipmentInterface
     {
-        return app(EquipmentInterface::class);
+        return $this->make(EquipmentInterface::class);
     }
 
     /**
@@ -343,25 +360,25 @@ class JamboJetClient
      */
     public function collection(): CollectionInterface
     {
-        return app(CollectionInterface::class);
+        return $this->make(CollectionInterface::class);
     }
 
     // APO 
     public function apo(): ApoInterface
     {
-        return app(ApoInterface::class);
+        return $this->make(ApoInterface::class);
     }
 
     // One-Time Travel Notification Service
     public function oneTimeTravelNotification(): OneTimeTravelNotificationInterface
     {
-        return app(OneTimeTravelNotificationInterface::class);
+        return $this->make(OneTimeTravelNotificationInterface::class);
     }
 
     // Person Service
     public function person(): PersonInterface
     {
-        return app(PersonInterface::class);
+        return $this->make(PersonInterface::class);
     }
     
 

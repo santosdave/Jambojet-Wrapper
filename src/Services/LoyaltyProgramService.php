@@ -253,7 +253,7 @@ class LoyaltyProgramService implements LoyaltyProgramInterface
      * @param string $tier Optional tier level
      * @return array Add response
      */
-    public function addFrequentFlyer(string $passengerKey, string $membershipNumber, string $tier = null): array
+    public function addFrequentFlyer(string $passengerKey, string $membershipNumber, ?string $tier = null): array
     {
         $data = [
             'passengerKey' => $passengerKey,

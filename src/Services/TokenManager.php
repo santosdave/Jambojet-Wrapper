@@ -7,23 +7,55 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Global Token Manager
- * 
- * Centralized token management across all service instances
+ * Token Manager
+ *
+ * Shares the API token across all service instances of one JamboJet account: in memory for
+ * this process, in the cache for the next. Tokens are kept per account (base URL, domain and
+ * user name), so several accounts in one application never share or overwrite a token.
  */
 class TokenManager
 {
-    protected static ?string $globalToken = null;
-    protected static ?Carbon $tokenExpiresAt = null;
-    protected string $cachePrefix = 'jambojet_global_';
+    /** @var array<string, array{token: string, expires_at: Carbon}> account scope => token */
+    protected static array $tokens = [];
+
+    protected string $scope;
+
+    protected string $cachePrefix;
 
     /**
-     * Set global token for all services
+     * @param  string|null  $scope  the account's scope (see scopeFor); the configured account when null
+     */
+    public function __construct(?string $scope = null)
+    {
+        $this->scope = $scope ?? static::scopeFor((array) config('jambojet'));
+        $this->cachePrefix = 'jambojet_global_' . $this->scope . '_';
+    }
+
+    /**
+     * A short, stable name for the account a configuration logs in as. Holds no secret.
+     */
+    public static function scopeFor(array $config): string
+    {
+        $auth = (array) ($config['auth'] ?? []);
+
+        return substr(hash('sha256', implode('|', [
+            rtrim((string) ($config['base_url'] ?? ''), '/'),
+            (string) ($auth['domain'] ?? ''),
+            (string) ($auth['username'] ?? ''),
+        ])), 0, 16);
+    }
+
+    public function scope(): string
+    {
+        return $this->scope;
+    }
+
+    /**
+     * Set the token for every service instance of this account
      */
     public function setToken(string $token, Carbon $expiresAt): void
     {
-        static::$globalToken = $token;
-        static::$tokenExpiresAt = $expiresAt;
+        static::$tokens[$this->scope] = ['token' => $token, 'expires_at' => $expiresAt];
 
         // Store in cache for persistence across requests, until the token expires
         Cache::put($this->cachePrefix . 'token', $token, $expiresAt);
@@ -53,7 +85,7 @@ class TokenManager
         $expiresAt = Cache::get($this->cachePrefix . 'expires_at');
 
         if ($token && $expiresAt && $expiresAt->isFuture()) {
-            static::$globalToken = $token;
+            static::$tokens[$this->scope] = ['token' => $token, 'expires_at' => $expiresAt];
             Log::debug('JamboJet: Auto-loaded cached token', [
                 'expires_at' => $expiresAt->toDateTimeString()
             ]);
@@ -61,17 +93,12 @@ class TokenManager
     }
 
     /**
-     * Get current global token
+     * Get the current token
      */
     public function getToken(): ?string
     {
-        // Check memory first
-        if (static::$globalToken) {
-            return static::$globalToken;
-        }
-
-        // Load from cache
-        return Cache::get($this->cachePrefix . 'token');
+        // Check memory first, then the cache
+        return static::$tokens[$this->scope]['token'] ?? Cache::get($this->cachePrefix . 'token');
     }
 
     /**
@@ -79,13 +106,7 @@ class TokenManager
      */
     public function getTokenExpiresAt(): ?Carbon
     {
-        // Check memory first
-        if (static::$tokenExpiresAt) {
-            return static::$tokenExpiresAt;
-        }
-
-        // Load from cache
-        return Cache::get($this->cachePrefix . 'expires_at');
+        return static::$tokens[$this->scope]['expires_at'] ?? Cache::get($this->cachePrefix . 'expires_at');
     }
 
     /**
@@ -104,12 +125,11 @@ class TokenManager
     }
 
     /**
-     * Clear global token
+     * Clear the token
      */
     public function clearToken(): void
     {
-        static::$globalToken = null;
-        static::$tokenExpiresAt = null;
+        unset(static::$tokens[$this->scope]);
 
         Cache::forget($this->cachePrefix . 'token');
         Cache::forget($this->cachePrefix . 'expires_at');

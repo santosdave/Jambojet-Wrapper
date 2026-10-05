@@ -581,9 +581,9 @@ class AuthenticationService implements AuthenticationInterface
         ], $expiresAt);
 
 
-        // ADD: Store current token globally
-        Cache::put('jambojet_current_token', $token, $expiresAt);
-        Cache::put('jambojet_current_token_expires', $expiresAt, $expiresAt);
+        // ADD: Store this account's current token
+        Cache::put($this->cachePrefix . 'current_token', $token, $expiresAt);
+        Cache::put($this->cachePrefix . 'current_token_expires', $expiresAt, $expiresAt);
     }
 
     /**
@@ -654,9 +654,10 @@ class AuthenticationService implements AuthenticationInterface
     {
         return $this->createToken([
             'credentials' => [
-                'userName' => config('jambojet.auth.username'),
-                'password' => config('jambojet.auth.password'),
-                'domain' => config('jambojet.auth.domain'),
+                // This account's credentials (the configured account unless given others)
+                'userName' => $this->config['auth']['username'] ?? config('jambojet.auth.username'),
+                'password' => $this->config['auth']['password'] ?? config('jambojet.auth.password'),
+                'domain' => $this->config['auth']['domain'] ?? config('jambojet.auth.domain'),
                 'channelType' => 'Api'
             ]
         ]);

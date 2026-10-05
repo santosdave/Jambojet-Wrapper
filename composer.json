@@ -1,6 +1,5 @@
 {
   "name": "santosdave/jambojet-laravel",
-  "version": "2.0.1",
   "description": "Comprehensive Laravel package for JamboJet's NSK API integration",
   "type": "library",
   "keywords": [
@@ -22,15 +21,15 @@
   ],
   "require": {
     "php": "^8.1",
-    "illuminate/support": "^9.0|^10.0|^11.0",
+    "illuminate/support": "^10.0|^11.0|^12.0",
     "guzzlehttp/guzzle": "^7.0",
-    "illuminate/http": "^9.0|^10.0|^11.0",
-    "laravel/framework": "^10.0|^11.0",
+    "illuminate/http": "^10.0|^11.0|^12.0",
+    "laravel/framework": "^10.0|^11.0|^12.0",
     "monolog/monolog": "^3.8"
   },
   "require-dev": {
-    "phpunit/phpunit": "^9.0|^10.0",
-    "orchestra/testbench": "^7.0|^8.0|^9.0"
+    "phpunit/phpunit": "^10.5|^11.0",
+    "orchestra/testbench": "^8.0|^9.0|^10.0"
   },
   "autoload": {
     "psr-4": {
