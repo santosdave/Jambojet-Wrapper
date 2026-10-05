@@ -37,6 +37,18 @@ class TokenLifecycleTest extends TestCase
         $this->assertSame(1, self::tokenRequests());
     }
 
+    public function test_it_reuses_the_token_with_response_caching_switched_off(): void
+    {
+        config(['jambojet.cache.enabled' => false]);
+        $this->fakeApi();
+
+        app(ApoInterface::class)->getAncillaryPricingOptions();
+        app(ApoInterface::class)->getAncillaryPricingOptions();
+        app(ApoInterface::class)->getAncillaryPricingOptions();
+
+        $this->assertSame(1, self::tokenRequests());
+    }
+
     public function test_it_sends_the_subscription_key_and_the_token(): void
     {
         $this->fakeApi('token-1');
