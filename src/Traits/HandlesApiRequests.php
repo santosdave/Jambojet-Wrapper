@@ -395,11 +395,16 @@ trait HandlesApiRequests
 
     /**
      * Generate cache key for requests
+     *
+     * Scoped to the session (token): many NSK endpoints answer for the booking held in the
+     * session, with nothing in the URL saying which, so without the session in the key one
+     * caller could be served another caller's cached booking.
      */
     protected function getCacheKey(string $url, array $data): string
     {
-        $key = $this->config['cache']['prefix'] . '_' . md5($url . serialize($data));
-        return $key;
+        $session = hash('sha256', (string) $this->accessToken);
+
+        return $this->config['cache']['prefix'] . '_' . md5($url . serialize($data) . '|' . $session);
     }
 
     /**

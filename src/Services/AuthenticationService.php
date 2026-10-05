@@ -562,9 +562,9 @@ class AuthenticationService implements AuthenticationInterface
      */
     protected function cacheToken(string $token, array $tokenData): void
     {
-        if (!$this->config['cache']['enabled']) {
-            return;
-        }
+        // Always kept, whatever jambojet.cache.enabled says: that switch is for API
+        // responses. Without this record every token looks about to expire, and a new token
+        // was requested on every call whenever response caching was off.
 
         // ADD: Parse expiration timestamp
         $expiresAt = isset($tokenData['expires'])
@@ -643,10 +643,6 @@ class AuthenticationService implements AuthenticationInterface
      */
     protected function getCachedToken(string $token): ?array
     {
-        if (!$this->config['cache']['enabled']) {
-            return null;
-        }
-
         $cacheKey = $this->cachePrefix . md5($token);
         return Cache::get($cacheKey);
     }
@@ -683,7 +679,7 @@ class AuthenticationService implements AuthenticationInterface
      */
     protected function clearTokenCache(): void
     {
-        if (!$this->config['cache']['enabled'] || !$this->accessToken) {
+        if (!$this->accessToken) {
             return;
         }
 
