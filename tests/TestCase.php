@@ -59,8 +59,8 @@ abstract class TestCase extends BaseTestCase
      */
     protected static function forgetProcessToken(): void
     {
-        foreach (['globalToken', 'tokenExpiresAt'] as $property) {
-            (new ReflectionProperty(TokenManager::class, $property))->setValue(null, null);
+        foreach (['tokens'] as $property) {
+            (new ReflectionProperty(TokenManager::class, $property))->setValue(null, []);
         }
     }
 

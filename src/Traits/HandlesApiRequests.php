@@ -11,6 +11,7 @@ use SantosDave\JamboJet\Contracts\AuthenticationInterface;
 use SantosDave\JamboJet\Exceptions\JamboJetApiException;
 use SantosDave\JamboJet\Exceptions\JamboJetAuthenticationException;
 use SantosDave\JamboJet\Exceptions\JamboJetValidationException;
+use SantosDave\JamboJet\Services\AuthenticationService;
 use SantosDave\JamboJet\Services\TokenManager;
 
 trait HandlesApiRequests
@@ -22,11 +23,35 @@ trait HandlesApiRequests
 
     protected string $cachePrefix = 'jambojet_global_';
 
-    public function __construct()
+    /**
+     * @param  array|null  $config  this account's settings (a full jambojet config); the
+     *                              application's config('jambojet') when null
+     */
+    public function __construct(?array $config = null)
     {
-        $this->config = config('jambojet');
+        $this->config = $config ?? config('jambojet');
+        // Tokens are kept per account, so several accounts in one app never share one.
+        $this->cachePrefix = 'jambojet_global_' . TokenManager::scopeFor($this->config) . '_';
 
         $this->loadCachedTokenIfAvailable();
+    }
+
+    /**
+     * The authentication service for this account: the container's binding for the
+     * configured account (so hosts can still swap it), a dedicated one for any other.
+     */
+    protected function authService(): AuthenticationInterface
+    {
+        if ($this->config === config('jambojet')) {
+            return app(AuthenticationInterface::class);
+        }
+
+        return new AuthenticationService($this->config);
+    }
+
+    protected function tokenManager(): TokenManager
+    {
+        return new TokenManager(TokenManager::scopeFor($this->config));
     }
 
     /**
@@ -136,8 +161,8 @@ trait HandlesApiRequests
                     try {
                         // Re-authenticate with platform credentials, and use the NEW token
                         // here: the retry used to resend the rejected one.
-                        $response = app(AuthenticationInterface::class)->autoAuthenticate();
-                        $this->extractTokenFromResponse($response, app(TokenManager::class));
+                        $response = $this->authService()->autoAuthenticate();
+                        $this->extractTokenFromResponse($response, $this->tokenManager());
 
                         if ($this->accessToken) {
                             $headers = $this->buildHeaders($customHeaders);
@@ -211,9 +236,9 @@ trait HandlesApiRequests
     protected function ensureValidToken(): void
     {
         try {
-            $tokenManager = app(TokenManager::class);
+            $tokenManager = $this->tokenManager();
             // Get auth service
-            $authService = app(AuthenticationInterface::class);
+            $authService = $this->authService();
 
             // Load from shared TokenManager
             if (!$this->accessToken && $tokenManager->hasValidToken()) {
