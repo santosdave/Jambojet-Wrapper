@@ -578,12 +578,12 @@ class AuthenticationService implements AuthenticationInterface
             'data' => $tokenData,
             'created_at' => now(),
             'expires_at' => $expiresAt  // ADD THIS
-        ], $expiresAt->diffInSeconds(now()));
+        ], $expiresAt);
 
 
         // ADD: Store current token globally
-        Cache::put('jambojet_current_token', $token, $expiresAt->diffInSeconds(now()));
-        Cache::put('jambojet_current_token_expires', $expiresAt, $expiresAt->diffInSeconds(now()));
+        Cache::put('jambojet_current_token', $token, $expiresAt);
+        Cache::put('jambojet_current_token_expires', $expiresAt, $expiresAt);
     }
 
     /**
@@ -601,7 +601,7 @@ class AuthenticationService implements AuthenticationInterface
         if (!$cached || !isset($cached['expires_at'])) {
             return 0;
         }
-        return max(0, $cached['expires_at']->diffInSeconds(now()));
+        return max(0, TokenManager::secondsUntil($cached['expires_at']));
     }
 
     /**
@@ -621,7 +621,7 @@ class AuthenticationService implements AuthenticationInterface
             return true; // No token, needs refresh
         }
 
-        $remaining = $cached['expires_at']->diffInSeconds(now());
+        $remaining = TokenManager::secondsUntil($cached['expires_at']);
         return $remaining < $thresholdSeconds;
     }
 

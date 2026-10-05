@@ -25,14 +25,26 @@ class TokenManager
         static::$globalToken = $token;
         static::$tokenExpiresAt = $expiresAt;
 
-        // Store in cache for persistence across requests
-        Cache::put($this->cachePrefix . 'token', $token, $expiresAt->diffInSeconds(now()));
-        Cache::put($this->cachePrefix . 'expires_at', $expiresAt, $expiresAt->diffInSeconds(now()));
+        // Store in cache for persistence across requests, until the token expires
+        Cache::put($this->cachePrefix . 'token', $token, $expiresAt);
+        Cache::put($this->cachePrefix . 'expires_at', $expiresAt, $expiresAt);
 
         Log::info('JamboJet: Global token updated', [
             'expires_at' => $expiresAt->toISOString(),
-            'expires_in_seconds' => $expiresAt->diffInSeconds(now())
+            'expires_in_seconds' => static::secondsUntil($expiresAt)
         ]);
+    }
+
+    /**
+     * Whole seconds from now until the given time; negative once it has passed.
+     *
+     * Written so it means the same on Carbon 2 (Laravel 10) and Carbon 3 (Laravel 11+):
+     * Carbon 3 made diffInSeconds() signed, so `$expiresAt->diffInSeconds(now())` turned
+     * negative for every future expiry and tokens were never cached.
+     */
+    public static function secondsUntil(\DateTimeInterface $at): int
+    {
+        return (int) Carbon::now()->diffInSeconds(Carbon::instance($at), false);
     }
 
     protected function loadCachedTokenIfAvailable(): void
@@ -116,6 +128,6 @@ class TokenManager
             return 0;
         }
 
-        return max(0, $expiresAt->diffInSeconds(now()));
+        return max(0, static::secondsUntil($expiresAt));
     }
 }
