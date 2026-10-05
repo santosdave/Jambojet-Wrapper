@@ -179,9 +179,9 @@ trait HandlesApiRequests
             } catch (\Exception $e) {
                 $attempt++;
 
-                if ($attempt >= $maxAttempts) {
+                if ($attempt >= $maxAttempts || !$this->mayRetry($method, $endpoint, $e)) {
                     throw new JamboJetApiException(
-                        "API request failed after {$maxAttempts} attempts: " . $e->getMessage(),
+                        "API request failed after {$attempt} attempt(s): " . $e->getMessage(),
                         $e->getCode(),
                         $e
                     );
@@ -193,6 +193,29 @@ trait HandlesApiRequests
         }
 
         throw new JamboJetApiException("Maximum retry attempts exceeded for endpoint: {$endpoint}");
+    }
+
+    /**
+     * Whether a failed call may be sent again. Only when that cannot do anything twice:
+     *
+     * - JamboJet refused it as too many requests (429): nothing was done;
+     * - any other client error (4xx) would fail the same way again;
+     * - a read (GET, or an availability search) changes nothing;
+     * - a write that failed or timed out (sell, payment, commit, cancel) may already have
+     *   been applied, so sending it again could take a payment or book twice: it is
+     *   reported instead, and the caller checks the booking before trying again.
+     */
+    protected function mayRetry(string $method, string $endpoint, \Exception $e): bool
+    {
+        $status = (int) $e->getCode();
+        if ($status === 429) {
+            return true;
+        }
+        if ($status >= 400 && $status < 500) {
+            return false;
+        }
+
+        return strtoupper($method) === 'GET' || str_contains($endpoint, 'availability/search');
     }
 
     /**
