@@ -19,7 +19,9 @@ class TokenLifecycleTest extends TestCase
     private function fakeApi(string ...$tokens): void
     {
         Http::fake([
-            '*/api/auth/v1/token/user' => self::tokenResponses(...($tokens ?: ['token-1'])),
+            // Spare tokens, so an unwanted extra token request is answered and counted
+            // instead of failing quietly inside the package's own error handling.
+            '*/api/auth/v1/token/user' => self::tokenResponses(...($tokens ?: ['token-1', 'token-2', 'token-3', 'token-4'])),
             '*/api/nsk/v1/apo' => Http::response(['data' => ['options' => []]]),
         ]);
     }
@@ -89,7 +91,7 @@ class TokenLifecycleTest extends TestCase
 
     public function test_it_authenticates_again_once_the_token_is_about_to_expire(): void
     {
-        $this->fakeApi('token-1', 'token-2');
+        $this->fakeApi('token-1', 'token-2', 'token-3', 'token-4');
         app(ApoInterface::class)->getAncillaryPricingOptions();
 
         Carbon::setTestNow(now()->addMinutes(19)); // inside the two-minute margin
