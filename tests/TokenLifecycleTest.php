@@ -89,6 +89,24 @@ class TokenLifecycleTest extends TestCase
         $this->assertFalse($manager->hasValidToken());
     }
 
+    public function test_a_rejected_token_is_replaced_and_the_call_retried_with_the_new_one(): void
+    {
+        Http::fake([
+            '*/api/auth/v1/token/user' => self::tokenResponses('token-1', 'token-2', 'token-3'),
+            '*/api/nsk/v1/apo' => Http::sequence()
+                ->push(['message' => 'Token expired'], 401)
+                ->push(['data' => ['options' => []]], 200),
+        ]);
+
+        $result = app(ApoInterface::class)->getAncillaryPricingOptions();
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(2, self::tokenRequests());
+        $apoCalls = Http::recorded(fn (Request $request) => str_contains($request->url(), 'api/nsk/v1/apo'))->values();
+        $this->assertSame('Bearer token-1', $apoCalls[0][0]->header('Authorization')[0]);
+        $this->assertSame('Bearer token-2', $apoCalls[1][0]->header('Authorization')[0]);
+    }
+
     public function test_it_authenticates_again_once_the_token_is_about_to_expire(): void
     {
         $this->fakeApi('token-1', 'token-2', 'token-3', 'token-4');

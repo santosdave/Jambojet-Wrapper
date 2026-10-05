@@ -90,7 +90,9 @@ trait HandlesApiRequests
         }
 
         $url = $this->buildUrl($endpoint, $queryParams);
-        $headers = $this->buildHeaders($headers);
+        $customHeaders = $headers;
+        $headers = $this->buildHeaders($customHeaders);
+        $reauthenticated = false;
 
         // Check cache for GET requests
         if ($method === 'GET' && $this->config['cache']['enabled']) {
@@ -122,25 +124,23 @@ trait HandlesApiRequests
                 // Handle API errors
                 $this->handleErrorResponse($response, $endpoint);
             } catch (JamboJetAuthenticationException $e) {
-                // ADD: Automatic 401 recovery
-                if ($e->getCode() === 401 && $attempt === 0 && !str_contains($endpoint, 'token')) {
+                // Automatic 401 recovery: once per call, with a fresh token, and not counted
+                // against the retry attempts (with one attempt it could otherwise never run).
+                if ($e->getCode() === 401 && !$reauthenticated && !str_contains($endpoint, 'token')) {
+                    $reauthenticated = true;
                     Log::info('JamboJet: Token expired (401), attempting re-authentication', [
                         'endpoint' => $endpoint,
                         'attempt' => $attempt + 1
                     ]);
 
                     try {
-                        // Re-authenticate with platform credentials
-                        $authService = app(AuthenticationInterface::class);
-                        $authService->autoAuthenticate();
+                        // Re-authenticate with platform credentials, and use the NEW token
+                        // here: the retry used to resend the rejected one.
+                        $response = app(AuthenticationInterface::class)->autoAuthenticate();
+                        $this->extractTokenFromResponse($response, app(TokenManager::class));
 
-                        // Update headers with new token
                         if ($this->accessToken) {
-                            $this->setAccessToken($this->accessToken);
-                            $headers = $this->buildHeaders([]);
-
-                            // Retry the request
-                            $attempt++;
+                            $headers = $this->buildHeaders($customHeaders);
                             continue;
                         }
                     } catch (\Exception $refreshError) {
