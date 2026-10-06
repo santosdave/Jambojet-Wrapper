@@ -88,7 +88,7 @@ class QueueService implements QueueInterface
         $params = $subQueueCode ? ['subQueueCode' => $subQueueCode] : [];
 
         try {
-            return $this->delete("api/nsk/v1/queues/bookings/{$bookingQueueCode}/items", $params);
+            return $this->delete("api/nsk/v1/queues/bookings/{$bookingQueueCode}/items", [], [], $params);
         } catch (\Exception $e) {
             throw new JamboJetApiException(
                 'Failed to empty booking queue: ' . $e->getMessage(),

@@ -227,6 +227,7 @@ class BookingService implements BookingInterface
             return $this->put(
                 'api/nsk/v3/booking',
                 $commitData,
+                [],
                 $params
             );
         } catch (\Exception $e) {
@@ -4537,7 +4538,7 @@ class BookingService implements BookingInterface
         }
 
         try {
-            return $this->delete("api/nsk/v1/booking/segments/{$segmentKey}/classOfService", $params);
+            return $this->delete("api/nsk/v1/booking/segments/{$segmentKey}/classOfService", [], [], $params);
         } catch (\Exception $e) {
             throw new JamboJetApiException('Failed to reset class of service: ' . $e->getMessage(), $e->getCode(), $e);
         }
@@ -4872,6 +4873,7 @@ class BookingService implements BookingInterface
             return $this->put(
                 "api/nsk/v3/booking/passengers/{$passengerKey}",
                 $passengerData,
+                [],
                 $queryParams
             );
         } catch (\Exception $e) {
@@ -5128,6 +5130,7 @@ class BookingService implements BookingInterface
             return $this->patch(
                 "api/nsk/v2/booking/passengers/{$passengerKey}/documents/{$documentKey}",
                 $patchData,
+                [],
                 $queryParams
             );
         } catch (\Exception $e) {
@@ -5391,6 +5394,7 @@ class BookingService implements BookingInterface
             return $this->put(
                 "api/nsk/v2/booking/passengers/{$passengerKey}/infant/documents/{$documentKey}",
                 $documentData,
+                [],
                 $queryParams
             );
         } catch (\Exception $e) {
@@ -5426,6 +5430,7 @@ class BookingService implements BookingInterface
             return $this->patch(
                 "api/nsk/v2/booking/passengers/{$passengerKey}/infant/documents/{$documentKey}",
                 $patchData,
+                [],
                 $queryParams
             );
         } catch (\Exception $e) {

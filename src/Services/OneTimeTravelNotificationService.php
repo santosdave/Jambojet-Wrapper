@@ -51,7 +51,7 @@ class OneTimeTravelNotificationService implements OneTimeTravelNotificationInter
         $params = $destination ? ['destination' => $destination] : [];
 
         try {
-            return $this->delete("api/nsk/v2/oneTimeTravelNotifications/{$subscriptionNumber}", $params);
+            return $this->delete("api/nsk/v2/oneTimeTravelNotifications/{$subscriptionNumber}", [], [], $params);
         } catch (\Exception $e) {
             throw new JamboJetApiException(
                 'Failed to delete notification: ' . $e->getMessage(),

@@ -78,25 +78,25 @@ trait HandlesApiRequests
     /**
      * Make HTTP PUT request to JamboJet API
      */
-    protected function put(string $endpoint, array $data = [], array $headers = []): array
+    protected function put(string $endpoint, array $data = [], array $headers = [], array $queryParams = []): array
     {
-        return $this->makeRequest('PUT', $endpoint, $data, $headers);
+        return $this->makeRequest('PUT', $endpoint, $data, $headers, $queryParams);
     }
 
     /**
      * Make HTTP PATCH request to JamboJet API
      */
-    protected function patch(string $endpoint, array $data = [], array $headers = []): array
+    protected function patch(string $endpoint, array $data = [], array $headers = [], array $queryParams = []): array
     {
-        return $this->makeRequest('PATCH', $endpoint, $data, $headers);
+        return $this->makeRequest('PATCH', $endpoint, $data, $headers, $queryParams);
     }
 
     /**
      * Make HTTP DELETE request to JamboJet API
      */
-    protected function delete(string $endpoint, array $data = [], array $headers = []): array
+    protected function delete(string $endpoint, array $data = [], array $headers = [], array $queryParams = []): array
     {
-        return $this->makeRequest('DELETE', $endpoint, $data, $headers);
+        return $this->makeRequest('DELETE', $endpoint, $data, $headers, $queryParams);
     }
 
     /**
@@ -340,6 +340,8 @@ trait HandlesApiRequests
         $url = "{$baseUrl}/{$endpoint}";
 
         if (!empty($queryParams)) {
+            // NSK reads booleans as true/false; http_build_query would send 1/0.
+            $queryParams = array_map(static fn ($v) => is_bool($v) ? ($v ? 'true' : 'false') : $v, $queryParams);
             $url .= '?' . http_build_query($queryParams);
         }
 

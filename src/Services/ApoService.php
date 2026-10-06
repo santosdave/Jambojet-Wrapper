@@ -77,7 +77,7 @@ class ApoService implements ApoInterface
         $params = ['inputParameterValue' => $value];
 
         try {
-            return $this->put("api/nsk/v1/apo/{$key}", [], $params);
+            return $this->put("api/nsk/v1/apo/{$key}", [], [], $params);
         } catch (\Exception $e) {
             throw new JamboJetApiException(
                 'Failed to update APO entry: ' . $e->getMessage(),
